@@ -8,7 +8,10 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate }) => {
-  if (currentView === View.ONBOARDING) return <>{children}</>;
+  // Full screen views without navigation
+  if (currentView === View.ONBOARDING || currentView === View.LOGIN) {
+    return <>{children}</>;
+  }
 
   const NavItem = ({ icon, label, view, onClick }: { icon: string; label: string; view?: View; onClick?: () => void }) => {
     const isActive = currentView === view;
@@ -49,10 +52,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
         </div>
 
         <div className="flex flex-col gap-4 w-full px-2">
-           <NavItem icon="dashboard" label="HUB" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
+           <NavItem icon="dashboard" label="HOME" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
            <NavItem icon="school" label="LABS" view={View.LABS} onClick={() => onNavigate(View.LABS)} /> 
            <NavItem icon="emoji_events" label="RANK" view={View.RANK} onClick={() => onNavigate(View.RANK)} />
-           <NavItem icon="settings" label="CFG" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
+           <NavItem icon="settings" label="PROFILE" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
         </div>
 
         <div className="mt-auto mb-4">
@@ -69,10 +72,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
         {/* Mobile Bottom Navigation - Hidden on Desktop */}
         <nav className="md:hidden bg-[#0D0F12]/95 backdrop-blur-md border-t border-white/5 absolute bottom-0 w-full z-50 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
           <div className="flex justify-around items-center h-16 px-2">
-             <NavItem icon="dashboard" label="HUB" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
-             <NavItem icon="school" label="LABS" view={View.LABS} onClick={() => onNavigate(View.LABS)} />
-             <NavItem icon="emoji_events" label="RANK" view={View.RANK} onClick={() => onNavigate(View.RANK)} />
-             <NavItem icon="settings" label="CFG" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
+             <NavItem icon="dashboard" label="Home" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
+             <NavItem icon="school" label="Labs" view={View.LABS} onClick={() => onNavigate(View.LABS)} />
+             <NavItem icon="emoji_events" label="Rank" view={View.RANK} onClick={() => onNavigate(View.RANK)} />
+             <NavItem icon="settings" label="Profile" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
           </div>
         </nav>
       </div>

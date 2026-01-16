@@ -1,66 +1,53 @@
 import React, { useState, useMemo } from 'react';
-import { INITIAL_USER_STATE, RANK_TIERS, PATHS } from '../constants';
-import { PathId } from '../types';
+import { RANK_TIERS, PATHS, MOCK_LEADERBOARD, MOCK_RANK_DISTRIBUTION } from '../constants';
+import { PathId, UserState } from '../types';
 
-export const Rank: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'RANKS'>('OVERVIEW');
+interface RankProps {
+    currentUser: UserState;
+}
+
+export const Rank: React.FC<RankProps> = ({ currentUser }) => {
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'RANKS' | 'LEADERBOARD'>('OVERVIEW');
   const [hoveredDataPoint, setHoveredDataPoint] = useState<number | null>(null);
   
-  // Calculate Global Progress Logic
-  const currentXp = INITIAL_USER_STATE.reputation;
-  const currentRankIndex = RANK_TIERS.findIndex(r => r.minXp > currentXp) - 1;
-  const actualRankIndex = currentRankIndex === -2 ? RANK_TIERS.length - 1 : (currentRankIndex === -1 ? 0 : currentRankIndex);
+  // Dynamic Global Progress
+  const currentXp = currentUser.reputation;
+  
+  // Determine current rank based on XP
+  let actualRankIndex = 0;
+  for (let i = 0; i < RANK_TIERS.length; i++) {
+      if (currentXp >= RANK_TIERS[i].minXp) {
+          actualRankIndex = i;
+      } else {
+          break;
+      }
+  }
   
   const currentRank = RANK_TIERS[actualRankIndex];
   const nextRank = RANK_TIERS[actualRankIndex + 1];
   
-  const xpToNext = nextRank ? nextRank.minXp - currentXp : 0;
+  // Fake Global Rank Calculation (inverse to XP)
+  // Base of 30,000 players. Subtract XP/10. Min rank 1.
+  const globalRank = Math.max(1, 30120 - Math.floor(currentXp / 5));
+  
   const xpProgress = nextRank 
     ? ((currentXp - currentRank.minXp) / (nextRank.minXp - currentRank.minXp)) * 100 
     : 100;
 
-  // Mock XP History Data for Graph
-  const historyData = [900, 940, 960, 1020, 1080, 1150, 1250]; // Last 7 days
-  const historyLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  // Graph Calculations (Smooth Bezier)
-  const maxGraphVal = Math.max(...historyData) * 1.05;
-  const minGraphVal = Math.min(...historyData) * 0.95;
-  const range = maxGraphVal - minGraphVal;
-  
-  const points = historyData.map((val, i) => ({
-    x: (i / (historyData.length - 1)) * 100,
-    y: 100 - ((val - minGraphVal) / range) * 80 - 10 // Padding
-  }));
-
-  let pathD = `M ${points[0].x},${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const curr = points[i];
-    const prev = points[i - 1];
-    const cp1x = prev.x + (curr.x - prev.x) * 0.5;
-    const cp1y = prev.y;
-    const cp2x = prev.x + (curr.x - prev.x) * 0.5;
-    const cp2y = curr.y;
-    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${curr.x},${curr.y}`;
-  }
-
-  // Mock Earned XP per path (In real app, derive from userState.completedModules)
-  const mockEarnedXp: Record<string, number> = {
-    [PathId.SOVEREIGN]: 700,
-    [PathId.WALLET_MASTERY]: 150,
-    [PathId.LIGHTNING_OPERATOR]: 350,
-    [PathId.PROTOCOL_ENGINEER]: 50,
-    [PathId.SOVEREIGN_MERCHANT]: 0,
-    [PathId.SECURITY_PRACTITIONER]: 0,
-    [PathId.P2P_MARKET]: 0,
-    [PathId.COMMUNITY_BUILDER]: 0,
-  };
-
+  // Real-time calculation of XP per path based on completed modules
   const pathStats = useMemo(() => {
     return PATHS.map(path => {
         const totalXp = path.modules.reduce((acc, m) => acc + m.xp, 0);
-        const earned = mockEarnedXp[path.id] || 0;
-        const percent = Math.round((earned / totalXp) * 100) || 0;
+        
+        // Calculate earned XP by checking if module ID is in user's completed list
+        const earned = path.modules.reduce((acc, m) => {
+            if (currentUser.completedModules.includes(m.id)) {
+                return acc + m.xp;
+            }
+            return acc;
+        }, 0);
+
+        const percent = totalXp > 0 ? Math.round((earned / totalXp) * 100) : 0;
         
         let colorClass = "text-text-muted";
         let bgClass = "bg-white/5";
@@ -80,7 +67,44 @@ export const Rank: React.FC = () => {
 
         return { ...path, totalXp, earned, percent, colorClass, bgClass, borderClass };
     }).sort((a, b) => b.percent - a.percent); 
-  }, []);
+  }, [currentUser.completedModules]);
+
+  // Mock History Data
+  const historyData = useMemo(() => {
+      const current = currentXp;
+      return [
+          Math.max(0, Math.floor(current * 0.4)),
+          Math.max(0, Math.floor(current * 0.5)),
+          Math.max(0, Math.floor(current * 0.65)),
+          Math.max(0, Math.floor(current * 0.8)),
+          Math.max(0, Math.floor(current * 0.9)),
+          Math.max(0, Math.floor(current * 0.95)),
+          current
+      ];
+  }, [currentXp]);
+  
+  const historyLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // Graph Calculations
+  const maxGraphVal = Math.max(...historyData, 100) * 1.1; // Ensure scale
+  const minGraphVal = Math.min(...historyData);
+  const range = maxGraphVal - minGraphVal || 100;
+  
+  const points = historyData.map((val, i) => ({
+    x: (i / (historyData.length - 1)) * 100,
+    y: 100 - ((val - minGraphVal) / range) * 80 - 10 
+  }));
+
+  let pathD = `M ${points[0].x},${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const curr = points[i];
+    const prev = points[i - 1];
+    const cp1x = prev.x + (curr.x - prev.x) * 0.5;
+    const cp1y = prev.y;
+    const cp2x = prev.x + (curr.x - prev.x) * 0.5;
+    const cp2y = curr.y;
+    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${curr.x},${curr.y}`;
+  }
 
   return (
     <div className="flex flex-col h-full bg-background-dark overflow-y-auto custom-scrollbar animate-in fade-in duration-500">
@@ -113,7 +137,12 @@ export const Rank: React.FC = () => {
                 {/* Middle: Info & Stats */}
                 <div className="flex-1 w-full text-center md:text-left space-y-6">
                     <div>
-                        <h2 className="text-text-muted text-xs font-bold uppercase tracking-[0.2em] mb-1">Current Standing</h2>
+                        <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                            <h2 className="text-text-muted text-xs font-bold uppercase tracking-[0.2em]">Current Standing</h2>
+                            <div className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                                Global Rank #{globalRank.toLocaleString()}
+                            </div>
+                        </div>
                         <h1 className="text-4xl md:text-5xl font-bold text-white font-display tracking-tight flex flex-col md:flex-row items-center md:items-baseline gap-3">
                             {currentRank.title}
                             <span className="text-sm font-body font-normal text-text-muted bg-white/5 px-2 py-1 rounded-lg border border-white/5">{currentXp.toLocaleString()} XP</span>
@@ -144,12 +173,12 @@ export const Rank: React.FC = () => {
                 {/* Right: Quick Stats */}
                 <div className="hidden lg:flex flex-col gap-3 min-w-[140px]">
                     <div className="p-3 rounded-xl bg-surface-dark/50 border border-white/5 backdrop-blur-sm">
-                        <span className="block text-[10px] text-text-muted uppercase font-bold mb-1">Global Rank</span>
-                        <span className="block text-xl font-bold text-white font-mono">#4,291</span>
+                        <span className="block text-[10px] text-text-muted uppercase font-bold mb-1">Modules Passed</span>
+                        <span className="block text-xl font-bold text-white font-mono">{currentUser.completedModules.length}</span>
                     </div>
                     <div className="p-3 rounded-xl bg-surface-dark/50 border border-white/5 backdrop-blur-sm">
-                        <span className="block text-[10px] text-text-muted uppercase font-bold mb-1">Percentile</span>
-                        <span className="block text-xl font-bold text-success font-mono">Top 12%</span>
+                        <span className="block text-[10px] text-text-muted uppercase font-bold mb-1">Community Score</span>
+                        <span className="block text-xl font-bold text-success font-mono">{currentXp}</span>
                     </div>
                 </div>
 
@@ -159,16 +188,22 @@ export const Rank: React.FC = () => {
 
       {/* Tabs */}
       <div className="px-6 md:px-8 mt-8 mb-6">
-          <div className="flex gap-8 border-b border-white/5">
+          <div className="flex gap-8 border-b border-white/5 overflow-x-auto no-scrollbar">
               <button 
                 onClick={() => setActiveTab('OVERVIEW')}
-                className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'OVERVIEW' ? 'border-primary text-white' : 'border-transparent text-text-muted hover:text-white'}`}
+                className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${activeTab === 'OVERVIEW' ? 'border-primary text-white' : 'border-transparent text-text-muted hover:text-white'}`}
               >
                   Performance Data
               </button>
               <button 
+                onClick={() => setActiveTab('LEADERBOARD')}
+                className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${activeTab === 'LEADERBOARD' ? 'border-primary text-white' : 'border-transparent text-text-muted hover:text-white'}`}
+              >
+                  Global Leaderboard
+              </button>
+              <button 
                 onClick={() => setActiveTab('RANKS')}
-                className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'RANKS' ? 'border-primary text-white' : 'border-transparent text-text-muted hover:text-white'}`}
+                className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${activeTab === 'RANKS' ? 'border-primary text-white' : 'border-transparent text-text-muted hover:text-white'}`}
               >
                   Rank System
               </button>
@@ -181,18 +216,18 @@ export const Rank: React.FC = () => {
         {activeTab === 'OVERVIEW' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500">
                 
-                {/* Left Column: Lighter XP Velocity Graph */}
+                {/* Left Column: XP Velocity Graph */}
                 <div className="space-y-8">
                     <div className="bg-surface-dark rounded-3xl p-6 border border-white/5 shadow-xl">
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-lg">timeline</span>
-                                    Velocity (7 Days)
+                                    Total Community Score
                                 </h3>
-                                <p className="text-[10px] text-text-muted mt-1">Reputation accumulation rate</p>
+                                <p className="text-[10px] text-text-muted mt-1">Reputation accumulation trajectory</p>
                             </div>
-                            <span className="text-xs font-bold text-success bg-success/5 px-3 py-1 rounded-full border border-success/10">+350 XP</span>
+                            <span className="text-xs font-bold text-success bg-success/5 px-3 py-1 rounded-full border border-success/10">{currentXp} XP</span>
                         </div>
                         
                         <div className="relative h-64 w-full select-none" onMouseLeave={() => setHoveredDataPoint(null)}>
@@ -272,44 +307,13 @@ export const Rank: React.FC = () => {
                             </div>
                         </div>
                     </div>
-
-                    {/* Recent Proofs List */}
-                    <div className="bg-surface-dark rounded-3xl p-6 border border-white/5 shadow-xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-base font-bold text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-success">verified</span>
-                                Ledger
-                            </h3>
-                            <button className="text-[10px] font-bold text-primary hover:underline">View All</button>
-                        </div>
-                        <div className="space-y-1">
-                            {[
-                                { title: 'Wallet Security Lab', time: '2h ago', xp: 100 },
-                                { title: 'Node Sync Drill', time: '1d ago', xp: 150 },
-                                { title: 'Phishing Defense', time: '3d ago', xp: 100 }
-                            ].map((proof, i) => (
-                                <div key={i} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-8 rounded-lg bg-surface-highlight flex items-center justify-center border border-white/5 group-hover:border-primary/30 transition-colors">
-                                             <span className="material-symbols-outlined text-sm text-text-muted group-hover:text-primary">history_edu</span>
-                                        </div>
-                                        <div>
-                                            <h4 className="text-sm font-bold text-white">{proof.title}</h4>
-                                            <p className="text-[10px] text-text-muted">{proof.time}</p>
-                                        </div>
-                                    </div>
-                                    <span className="font-mono text-xs font-bold text-success">+{proof.xp} XP</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
 
                 {/* Right Column: Path Mastery Breakdown */}
                 <div className="bg-surface-dark rounded-3xl p-6 border border-white/5 shadow-xl flex flex-col h-full">
                     <h3 className="text-base font-bold text-white mb-6 flex items-center gap-2">
                         <span className="material-symbols-outlined text-blue-400">donut_large</span>
-                        Domain Competence
+                        Domain Competence Breakdown
                     </h3>
                     
                     <div className="flex-1 space-y-5 overflow-y-auto custom-scrollbar pr-2">
@@ -326,7 +330,7 @@ export const Rank: React.FC = () => {
                                         </div>
                                         <div className="h-1.5 w-full bg-surface-highlight rounded-full overflow-hidden">
                                             <div 
-                                                className={`h-full ${stat.bgClass} relative rounded-full`} 
+                                                className={`h-full ${stat.bgClass} relative rounded-full transition-all duration-1000`} 
                                                 style={{width: `${stat.percent}%`}}
                                             >
                                             </div>
@@ -335,7 +339,6 @@ export const Rank: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-center text-[10px] text-text-muted font-mono px-1">
                                     <span>XP: {stat.earned} / {stat.totalXp}</span>
-                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer hover:underline">View Modules &gt;</span>
                                 </div>
                             </div>
                         ))}
@@ -346,6 +349,113 @@ export const Rank: React.FC = () => {
                             <span className="material-symbols-outlined group-hover:text-primary transition-colors">download</span>
                             Download Full Competence Audit
                          </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'LEADERBOARD' && (
+            <div className="animate-in slide-in-from-right-4 duration-500 max-w-5xl mx-auto">
+                {/* Top 3 Podium */}
+                <div className="flex justify-center items-end gap-4 mb-12">
+                    {/* Rank 2 */}
+                    <div className="flex flex-col items-center">
+                        <div className="size-16 rounded-full bg-surface-highlight border-2 border-white/10 mb-3 flex items-center justify-center overflow-hidden">
+                             <span className="material-symbols-outlined text-3xl text-text-muted">smart_toy</span>
+                        </div>
+                        <div className="text-center mb-2">
+                             <div className="text-white font-bold text-sm">{MOCK_LEADERBOARD[1].name}</div>
+                             <div className="text-text-muted text-xs font-mono">{MOCK_LEADERBOARD[1].xp.toLocaleString()} XP</div>
+                        </div>
+                        <div className="w-24 h-32 bg-surface-dark border-t border-x border-white/5 rounded-t-lg flex items-start justify-center pt-2 relative">
+                             <span className="text-4xl font-bold text-white/10">2</span>
+                             <div className="absolute top-0 w-full h-1 bg-white/20"></div>
+                        </div>
+                    </div>
+
+                    {/* Rank 1 */}
+                    <div className="flex flex-col items-center relative z-10">
+                         <span className="material-symbols-outlined text-yellow-400 text-4xl mb-1 animate-bounce">emoji_events</span>
+                         <div className="size-24 rounded-full bg-primary/20 border-2 border-primary mb-4 flex items-center justify-center overflow-hidden shadow-[0_0_30px_rgba(247,147,26,0.4)]">
+                             <span className="material-symbols-outlined text-4xl text-primary">deployed_code</span>
+                        </div>
+                        <div className="text-center mb-2">
+                             <div className="text-white font-bold text-lg">{MOCK_LEADERBOARD[0].name}</div>
+                             <div className="text-primary text-sm font-bold font-mono">{MOCK_LEADERBOARD[0].xp.toLocaleString()} XP</div>
+                        </div>
+                        <div className="w-32 h-40 bg-gradient-to-b from-surface-highlight to-surface-dark border-t border-x border-primary/20 rounded-t-lg flex items-start justify-center pt-2 relative shadow-lg">
+                             <span className="text-6xl font-bold text-primary/10">1</span>
+                             <div className="absolute top-0 w-full h-1 bg-primary"></div>
+                        </div>
+                    </div>
+
+                    {/* Rank 3 */}
+                    <div className="flex flex-col items-center">
+                        <div className="size-16 rounded-full bg-surface-highlight border-2 border-white/10 mb-3 flex items-center justify-center overflow-hidden">
+                             <span className="material-symbols-outlined text-3xl text-text-muted">smart_toy</span>
+                        </div>
+                        <div className="text-center mb-2">
+                             <div className="text-white font-bold text-sm">{MOCK_LEADERBOARD[2].name}</div>
+                             <div className="text-text-muted text-xs font-mono">{MOCK_LEADERBOARD[2].xp.toLocaleString()} XP</div>
+                        </div>
+                        <div className="w-24 h-24 bg-surface-dark border-t border-x border-white/5 rounded-t-lg flex items-start justify-center pt-2 relative">
+                             <span className="text-4xl font-bold text-white/10">3</span>
+                             <div className="absolute top-0 w-full h-1 bg-brown-500/20"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table List */}
+                <div className="bg-surface-dark rounded-3xl border border-white/5 overflow-hidden">
+                    <div className="p-4 border-b border-white/5 grid grid-cols-12 gap-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                        <div className="col-span-1 text-center">Rank</div>
+                        <div className="col-span-5">Identity (Pubkey)</div>
+                        <div className="col-span-3 text-right">Reputation</div>
+                        <div className="col-span-3 text-right">Status</div>
+                    </div>
+                    
+                    {/* Top 5 Render */}
+                    {MOCK_LEADERBOARD.map((player) => (
+                        <div key={player.rank} className="p-4 border-b border-white/5 grid grid-cols-12 gap-4 items-center hover:bg-white/5 transition-colors group">
+                            <div className="col-span-1 text-center font-mono font-bold text-white/50 group-hover:text-white">#{player.rank}</div>
+                            <div className="col-span-5 flex items-center gap-3">
+                                <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-xs">
+                                    {player.name.substring(0, 1)}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-white font-bold text-sm truncate">{player.name}</div>
+                                    <div className="text-text-muted text-[10px] font-mono truncate opacity-60">{player.pubkey}</div>
+                                </div>
+                            </div>
+                            <div className="col-span-3 text-right font-mono font-bold text-primary">{player.xp.toLocaleString()} XP</div>
+                            <div className="col-span-3 text-right">
+                                <span className="inline-flex items-center gap-1 bg-success/10 text-success text-[10px] font-bold px-2 py-1 rounded border border-success/20">
+                                    <span className="size-1.5 rounded-full bg-success animate-pulse"></span>
+                                    ONLINE
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Separator */}
+                    <div className="p-2 text-center text-text-muted text-xs tracking-widest bg-black/20">. . .</div>
+
+                    {/* Current User Row */}
+                    <div className="p-4 bg-primary/5 border-l-2 border-primary grid grid-cols-12 gap-4 items-center">
+                        <div className="col-span-1 text-center font-mono font-bold text-primary">#{globalRank.toLocaleString()}</div>
+                        <div className="col-span-5 flex items-center gap-3">
+                            <div className="size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold text-xs">
+                                You
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-white font-bold text-sm truncate">{currentUser.npub || 'Satoshi_Vz'}</div>
+                                <div className="text-text-muted text-[10px] font-mono truncate opacity-60">{currentUser.pubkey || 'bc1q...'}</div>
+                            </div>
+                        </div>
+                        <div className="col-span-3 text-right font-mono font-bold text-white">{currentXp.toLocaleString()} XP</div>
+                         <div className="col-span-3 text-right">
+                            <span className="text-[10px] font-bold text-text-muted">Top {Math.max(1, Math.round((globalRank / 30000) * 100))}%</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -369,6 +479,7 @@ export const Rank: React.FC = () => {
                     {RANK_TIERS.map((tier, index) => {
                         const isUnlocked = currentXp >= tier.minXp;
                         const isCurrent = index === actualRankIndex;
+                        const activeCount = MOCK_RANK_DISTRIBUTION[tier.id] || 0;
 
                         return (
                             <div 
@@ -391,15 +502,31 @@ export const Rank: React.FC = () => {
                                          <span className={`block font-mono font-bold text-lg ${isUnlocked ? 'text-white' : 'text-text-muted'}`}>
                                             {tier.minXp.toLocaleString()} XP
                                         </span>
-                                        {isCurrent && <span className="inline-block bg-primary text-background-dark text-[10px] font-bold px-2 py-0.5 rounded uppercase mt-1">Current</span>}
-                                        {!isUnlocked && <span className="inline-flex items-center gap-1 border border-white/10 text-text-muted text-[10px] font-bold px-2 py-0.5 rounded uppercase mt-1"><span className="material-symbols-outlined text-[10px]">lock</span> Locked</span>}
+                                        {isCurrent ? (
+                                             <span className="inline-block bg-primary text-background-dark text-[10px] font-bold px-2 py-0.5 rounded uppercase mt-1">Current</span>
+                                        ) : (
+                                            <span className="inline-block text-[10px] font-bold text-text-muted/50 uppercase mt-1">
+                                                {activeCount.toLocaleString()} Agents
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className={`text-xl font-bold font-display mb-2 ${isUnlocked ? 'text-white' : 'text-text-muted'}`}>
-                                        {tier.title}
-                                    </h3>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className={`text-xl font-bold font-display ${isUnlocked ? 'text-white' : 'text-text-muted'}`}>
+                                            {tier.title}
+                                        </h3>
+                                        {/* Distribution Bar */}
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full ${isCurrent ? 'bg-primary' : 'bg-white/20'}`} 
+                                                    style={{ width: `${Math.min(100, (activeCount / 15000) * 100)}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <p className="text-sm text-text-muted leading-relaxed">{tier.description}</p>
                                 </div>
                             </div>

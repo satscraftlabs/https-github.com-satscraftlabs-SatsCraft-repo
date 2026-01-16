@@ -1,9 +1,11 @@
 
+
 export enum View {
+  LOGIN = 'LOGIN', // New Entry Point
   ONBOARDING = 'ONBOARDING',
   DASHBOARD = 'DASHBOARD',
   SIMULATION = 'SIMULATION',
-  BUILDER = 'BUILDER', // New View for IDE/Coding
+  BUILDER = 'BUILDER', 
   LABS = 'LABS',
   AUDIT = 'AUDIT',
   PROFILE = 'PROFILE',
@@ -42,12 +44,25 @@ export interface Path {
   modules: Module[];
 }
 
+export interface AppNotification {
+  id: string;
+  type: 'PENALTY' | 'INFO' | 'ACHIEVEMENT';
+  title: string;
+  message: string;
+  data?: any;
+}
+
 export interface UserState {
+  isGuest: boolean;
+  pubkey?: string; // Hex public key
+  npub?: string;   // Displayable ID
   reputation: number;
   rank: string;
   completedModules: string[];
   currentPath: PathId | null;
   streak: number;
+  lastActive: string; // ISO Date String
+  notifications: AppNotification[];
 }
 
 export interface SimulationOption {

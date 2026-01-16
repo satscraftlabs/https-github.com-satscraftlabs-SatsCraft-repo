@@ -1,3 +1,5 @@
+
+
 import { Module, Path, PathId } from './types';
 
 export const PATHS: Path[] = [
@@ -115,11 +117,13 @@ export const PATHS: Path[] = [
 ];
 
 export const INITIAL_USER_STATE = {
-  reputation: 1250,
-  rank: "Shrimp",
+  reputation: 0,
+  rank: "Pleb",
   completedModules: [],
   currentPath: PathId.SOVEREIGN,
-  streak: 4
+  streak: 0,
+  lastActive: new Date().toISOString(),
+  notifications: []
 };
 
 export const RANK_TIERS = [
@@ -131,4 +135,23 @@ export const RANK_TIERS = [
   { id: 'SHARK', title: 'Shark', minXp: 50000, icon: 'dangerous', description: 'Dominating P2P markets. Arbitrage and routing master.' },
   { id: 'WHALE', title: 'Whale', minXp: 100000, icon: 'tsunami', description: 'Moving the market. Deep protocol understanding and security architecture.' },
   { id: 'KEEPER', title: 'Citadel Keeper', minXp: 500000, icon: 'castle', description: 'Guardian of consensus. The highest level of operational sovereignity.' },
+];
+
+export const MOCK_RANK_DISTRIBUTION: Record<string, number> = {
+  'PLEB': 14205,
+  'SHRIMP': 8430,
+  'CRAB': 4100,
+  'OCTOPUS': 2150,
+  'DOLPHIN': 850,
+  'SHARK': 320,
+  'WHALE': 55,
+  'KEEPER': 3
+};
+
+export const MOCK_LEADERBOARD = [
+  { rank: 1, name: "Satoshi_Vz", xp: 1250000, pubkey: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" },
+  { rank: 2, name: "Hal_Finney_AI", xp: 1180000, pubkey: "bc1q5p7t5y8j4k9l2m3n4o5p6q7r8s9t0u1v2w3x4y" },
+  { rank: 3, name: "Wei_Dai_Sim", xp: 1150000, pubkey: "bc1q9z8y7x6w5v4u3t2s1r0q9p8o7n6m5l4k3j2i1h" },
+  { rank: 4, name: "Szabo_Oracle", xp: 980000, pubkey: "bc1q1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s" },
+  { rank: 5, name: "Back_Hash", xp: 920000, pubkey: "bc1q2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t" },
 ];

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
+import { Login } from './views/Login'; // New View
 import { Onboarding } from './views/Onboarding';
 import { Dashboard } from './views/Dashboard';
 import { Labs } from './views/Labs';
@@ -9,17 +10,19 @@ import { LightningSandbox } from './simulations/LightningSandbox';
 import { PhishingDefense } from './simulations/PhishingDefense';
 import { AdversarialStressTest } from './simulations/AdversarialStressTest';
 import { StandardSimulation } from './views/StandardSimulation';
-import { BuilderSimulation } from './views/BuilderSimulation'; // New import
+import { BuilderSimulation } from './views/BuilderSimulation';
 import { Audit } from './views/Audit';
 import { Profile } from './views/Profile';
 import { DailyBonusModal } from './components/DailyBonusModal';
+import { NotificationModal } from './components/NotificationModal';
 import { View, PathId, UserState } from './types';
 import { INITIAL_USER_STATE, PATHS } from './constants';
 import { MODULE_CONTENT } from './data/moduleContent';
-import { BUILDER_CONTENT } from './data/builderContent'; // New import
+import { BUILDER_CONTENT } from './data/builderContent';
+import { loginWithNostr, loginWithLightning, saveUserState } from './utils/auth';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<View>(View.ONBOARDING);
+  const [view, setView] = useState<View>(View.LOGIN); // Start at Login
   const [userState, setUserState] = useState<UserState>(INITIAL_USER_STATE);
   const [activeSimulation, setActiveSimulation] = useState<string | null>(null);
   
@@ -27,16 +30,72 @@ const App: React.FC = () => {
   const [showDailyBonus, setShowDailyBonus] = useState(false);
   const [hasClaimedDaily, setHasClaimedDaily] = useState(false);
 
-  // Trigger daily bonus when entering dashboard for the first time
+  // Notification State
+  const [currentNotification, setCurrentNotification] = useState<any>(null);
+
+  // Persist state on every change if logged in
   useEffect(() => {
-    if (view === View.DASHBOARD && !hasClaimedDaily && !showDailyBonus) {
-        // Small delay for better UX
+    if (!userState.isGuest && userState.pubkey) {
+        saveUserState(userState);
+    }
+  }, [userState]);
+
+  // Handle Notifications Queue (Penalty alerts, etc)
+  useEffect(() => {
+      if (userState.notifications && userState.notifications.length > 0) {
+          setCurrentNotification(userState.notifications[0]);
+      }
+  }, [userState.notifications]);
+
+  // Trigger daily bonus
+  useEffect(() => {
+    // Only show bonus if no critical notifications are pending
+    if (view === View.DASHBOARD && !hasClaimedDaily && !showDailyBonus && !currentNotification) {
         const timer = setTimeout(() => {
             setShowDailyBonus(true);
         }, 800);
         return () => clearTimeout(timer);
     }
-  }, [view, hasClaimedDaily, showDailyBonus]);
+  }, [view, hasClaimedDaily, showDailyBonus, currentNotification]);
+
+  // Auth Handlers
+  const handleNostrLogin = async () => {
+    try {
+        const loggedInUser = await loginWithNostr();
+        setUserState(loggedInUser);
+        handleLoginRedirect(loggedInUser);
+    } catch (e) {
+        throw e;
+    }
+  };
+
+  const handleLightningLogin = async (address: string, displayName: string) => {
+      try {
+          const loggedInUser = await loginWithLightning(address, displayName);
+          setUserState(loggedInUser);
+          handleLoginRedirect(loggedInUser);
+      } catch (e) {
+          throw e;
+      }
+  };
+
+  const handleLoginRedirect = (user: UserState) => {
+    if (user.completedModules.length > 0) {
+        setView(View.DASHBOARD);
+    } else {
+        setView(View.ONBOARDING);
+    }
+  };
+
+  const handleGuestLogin = () => {
+      setUserState({ ...INITIAL_USER_STATE, isGuest: true });
+      setView(View.ONBOARDING);
+  };
+
+  const handleLogout = () => {
+      setUserState(INITIAL_USER_STATE);
+      setView(View.LOGIN);
+  };
 
   const handleOnboardingComplete = (path: PathId) => {
     setUserState(prev => ({ ...prev, currentPath: path }));
@@ -49,8 +108,6 @@ const App: React.FC = () => {
 
   const handleModuleSelect = (moduleId: string) => {
     setActiveSimulation(moduleId);
-    
-    // Check if this module has a Builder content definition
     if (BUILDER_CONTENT[moduleId]) {
         setView(View.BUILDER);
     } else {
@@ -61,13 +118,28 @@ const App: React.FC = () => {
   const handleSimulationComplete = () => {
     if (!activeSimulation) return;
 
-    // Mark complete
+    // Calc XP for the module
+    let xpGain = 0;
+    // Check if standard module
+    for (const p of PATHS) {
+        const mod = p.modules.find(m => m.id === activeSimulation);
+        if (mod) xpGain = mod.xp;
+    }
+
+    // Mark complete & Add XP
     const updatedCompleted = [...userState.completedModules];
+    let newReputation = userState.reputation;
+    
     if (!updatedCompleted.includes(activeSimulation)) {
         updatedCompleted.push(activeSimulation);
+        newReputation += xpGain;
     }
     
-    setUserState(prev => ({ ...prev, completedModules: updatedCompleted }));
+    setUserState(prev => ({ 
+        ...prev, 
+        completedModules: updatedCompleted,
+        reputation: newReputation
+    }));
 
     // Check Path Completion Logic
     const currentPathData = PATHS.find(p => p.id === userState.currentPath);
@@ -95,29 +167,33 @@ const App: React.FC = () => {
       setShowDailyBonus(false);
   };
 
+  const handleCloseNotification = () => {
+      // Remove the first notification from the list
+      setUserState(prev => ({
+          ...prev,
+          notifications: prev.notifications.slice(1)
+      }));
+      setCurrentNotification(null);
+  };
+
   const renderSimulation = () => {
     if (!activeSimulation) return null;
 
-    // Custom Simulators
     if (activeSimulation === '1.4' && userState.currentPath === PathId.SOVEREIGN) return <StandardSimulation content={MODULE_CONTENT['1.4']} onComplete={handleSimulationComplete} onExit={() => setView(View.DASHBOARD)} />;
     if (activeSimulation === '4.3') return <LightningSandbox onComplete={handleSimulationComplete} />;
     if (activeSimulation === '6.3') return <PhishingDefense onComplete={handleSimulationComplete} />;
 
-    // Standard Engine
     const content = MODULE_CONTENT[activeSimulation];
     if (content) {
         return <StandardSimulation content={content} onComplete={handleSimulationComplete} onExit={() => setView(View.DASHBOARD)} />;
     }
 
-    // Fallback
     return (
         <div className="flex flex-col items-center justify-center h-full bg-background-dark p-6 text-center">
             <span className="material-symbols-outlined text-6xl text-text-muted mb-4">construction</span>
             <h2 className="text-xl font-bold text-white mb-2">Under Construction</h2>
-            <p className="text-text-muted mb-6">This simulation module is being engineered. Check back in the next block.</p>
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-4">
                 <button onClick={() => setView(View.DASHBOARD)} className="text-text-muted font-bold hover:text-white">Return</button>
-                <button onClick={handleSimulationComplete} className="text-primary font-bold hover:underline">[DEBUG] Complete Module</button>
             </div>
         </div>
     );
@@ -125,6 +201,14 @@ const App: React.FC = () => {
 
   return (
     <Layout currentView={view} onNavigate={setView}>
+      {view === View.LOGIN && (
+          <Login 
+            onNostrLogin={handleNostrLogin} 
+            onLightningLogin={handleLightningLogin}
+            onGuest={handleGuestLogin} 
+          />
+      )}
+
       {view === View.ONBOARDING && (
         <Onboarding onComplete={handleOnboardingComplete} />
       )}
@@ -136,7 +220,7 @@ const App: React.FC = () => {
           onViewProfile={() => setView(View.PROFILE)}
           onEnterStressTest={() => setView(View.STRESS_TEST)}
           onPathChange={handlePathChange}
-          completedModules={userState.completedModules}
+          userState={userState} // Correctly passed prop
         />
       )}
 
@@ -145,7 +229,7 @@ const App: React.FC = () => {
       )}
 
       {view === View.RANK && (
-        <Rank />
+        <Rank currentUser={userState} />
       )}
 
       {view === View.SIMULATION && renderSimulation()}
@@ -173,7 +257,7 @@ const App: React.FC = () => {
       )}
 
       {view === View.PROFILE && (
-        <Profile />
+        <Profile user={userState} onLogout={handleLogout} />
       )}
 
       {showDailyBonus && (
@@ -181,6 +265,13 @@ const App: React.FC = () => {
             streak={userState.streak} 
             onClaim={handleClaimDaily} 
             onClose={() => setShowDailyBonus(false)} 
+          />
+      )}
+
+      {currentNotification && (
+          <NotificationModal 
+            notification={currentNotification} 
+            onClose={handleCloseNotification} 
           />
       )}
     </Layout>
