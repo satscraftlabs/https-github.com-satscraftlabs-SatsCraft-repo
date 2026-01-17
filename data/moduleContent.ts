@@ -1,7 +1,8 @@
+
 import { ModuleContent } from '../types';
 
 export const MODULE_CONTENT: Record<string, ModuleContent> = {
-  // --- MODULE 1.1: The Role and Necessity of Money ---
+  // --- PATH 1: SOVEREIGN ---
   '1.1': {
     id: '1.1',
     steps: [
@@ -43,12 +44,466 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-  // --- MODULE 1.2 - 6.4 (Existing Content Preserved) ---
-  // ... (Previous content omitted for brevity, but logically present) ...
-  // [I am re-injecting 6.4 here to ensure the file structure remains valid for the app if I were overwriting, 
-  // but since I am appending new modules, I will focus on 7.x and 8.x]
-  
-  // --- MODULE 7.1: P2P Trading Fundamentals ---
+  '1.2': {
+    id: '1.2',
+    steps: [
+      {
+        id: 's1',
+        title: 'The Cantillon Effect',
+        explanation: 'When new money is printed, it is not distributed evenly. It goes to banks and government contractors first.\n\nThey buy assets at current prices. By the time the money reaches you (wages), prices have risen. Inflation is a wealth transfer from the poor to the connected.',
+        question: 'Who benefits most from money printing?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Savers', isCorrect: false, feedback: 'Savers are punished as their purchasing power dilutes.' },
+            { id: 'o2', label: 'First Receivers', isCorrect: true, feedback: 'Correct. Those closest to the printer buy assets before inflation hits prices.' }
+        ]
+      },
+      {
+        id: 's2',
+        title: 'Debasement History',
+        explanation: 'From Roman Denarius clipping to the Weimar Republic printing press, every fiat currency in history has eventually trended to zero.\n\nGovernments choose inflation over taxation because it is invisible to the uneducated.',
+        question: 'Why do governments prefer inflation over direct taxes?',
+        visualType: 'TIMELINE',
+        options: [
+            { id: 'o1', label: 'It is easier to hide', isCorrect: true, feedback: 'Correct. Direct taxes cause revolts. Inflation is blamed on "greedy corporations" or "supply chains".' },
+            { id: 'o2', label: 'It is fairer', isCorrect: false, feedback: 'It is the most regressive tax, hurting the poor the most.' }
+        ]
+      }
+    ]
+  },
+  '1.3': {
+    id: '1.3',
+    steps: [
+      {
+        id: 's1',
+        title: 'The Byzantine Generals Problem',
+        explanation: 'Before Bitcoin, digital cash had a "Double Spend" problem. You needed a central server (Visa/PayPal) to prevent copying money.\n\nSatoshi Nakamoto solved this with Proof of Work, allowing decentralized consensus without a leader.',
+        question: 'What does Proof of Work solve?',
+        visualType: 'BLOCKCHAIN',
+        options: [
+            { id: 'o1', label: 'Transaction speed', isCorrect: false, feedback: 'PoW is intentionally slow to ensure security.' },
+            { id: 'o2', label: 'Trustless Consensus', isCorrect: true, feedback: 'Correct. It allows strangers to agree on the ledger state without a middleman.' }
+        ]
+      },
+      {
+        id: 's2',
+        title: 'The 21 Million Cap',
+        explanation: 'There will never be more than 21,000,000 BTC. This is enforced by nodes, not miners.\n\nIf miners try to print more, the nodes reject their blocks. The supply schedule is unchangeable.',
+        question: 'Who enforces the 21M limit?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'The CEO of Bitcoin', isCorrect: false, feedback: 'There is no CEO.' },
+            { id: 'o2', label: 'Full Nodes', isCorrect: true, feedback: 'Correct. Every user running a node validates the rules.' }
+        ]
+      }
+    ]
+  },
+  '1.4': {
+    id: '1.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'Not Your Keys, Not Your Coins',
+        explanation: 'When you leave coins on an exchange, you do not own Bitcoin. You own an IOU.\n\nExchanges can be hacked, regulated, or go bankrupt. Self-custody is the only way to truly own your wealth.',
+        question: 'Who controls the Bitcoin on an exchange?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'You do', isCorrect: false, feedback: 'Incorrect. You only have a login. They have the keys.' },
+            { id: 'o2', label: 'The Exchange', isCorrect: true, feedback: 'Correct. If they pause withdrawals, you have nothing.' }
+        ]
+      },
+      {
+        id: 's2',
+        title: 'Public vs Private Keys',
+        explanation: 'A Public Key is like your email address (receive funds). A Private Key is like your password (send funds).\n\nNever share your Private Key. You can share your Public Key freely.',
+        question: 'What happens if you share your Private Key?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Funds are stolen', isCorrect: true, feedback: 'Correct. Anyone with the key can spend the funds.' },
+            { id: 'o2', label: 'Nothing', isCorrect: false, feedback: 'Your wallet is compromised immediately.' }
+        ]
+      }
+    ]
+  },
+  '1.5': {
+    id: '1.5',
+    steps: [
+      {
+        id: 's1',
+        title: 'Entropy & The Seed',
+        explanation: 'Your 12 or 24 words represent a number so huge it cannot be guessed.\n\nHumans are bad at randomness. Never create a seed from your brain (e.g., "password123"). Always use high-quality entropy (dice, hardware RNG).',
+        question: 'Is "Correct Horse Battery Staple" a good seed?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Yes', isCorrect: false, feedback: 'No. Brain wallets are easily cracked by computers.' },
+            { id: 'o2', label: 'No', isCorrect: true, feedback: 'Correct. Always let math generate the randomness.' }
+        ]
+      },
+      {
+        id: 's2',
+        title: 'The $5 Wrench Attack',
+        explanation: 'Cryptography cannot stop physical violence. If someone threatens you, you will give up your password.\n\nSolution: Passphrases (the "25th word"). This creates a hidden wallet. You can give the attacker the "decoy" wallet with a small amount.',
+        question: 'What does a BIP39 Passphrase do?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Encrypts the seed', isCorrect: false, feedback: 'Technically yes, but functionally it creates a completely different wallet.' },
+            { id: 'o2', label: 'Creates a hidden wallet', isCorrect: true, feedback: 'Correct. The same seed + different passphrase = completely different addresses.' }
+        ]
+      }
+    ]
+  },
+  '1.6': {
+    id: '1.6',
+    steps: [
+      {
+        id: 's1',
+        title: 'Don\'t Trust, Verify',
+        explanation: 'If you use a centralized wallet (like Coinbase or a default Light Wallet), you are asking *their* node what your balance is.\n\nThey can lie to you. Running your own node means you download the blockchain and verify every transaction yourself.',
+        question: 'Why run a node if you aren\'t a miner?',
+        visualType: 'BLOCKCHAIN',
+        options: [
+            { id: 'o1', label: 'To earn fees', isCorrect: false, feedback: 'Only miners earn block rewards/fees.' },
+            { id: 'o2', label: 'To ensure financial sovereignty', isCorrect: true, feedback: 'Correct. A node ensures you are interacting with the real Bitcoin network, not a fake one.' }
+        ]
+      }
+    ]
+  },
+  '1.7': {
+    id: '1.7',
+    steps: [
+      {
+        id: 's1',
+        title: 'Energy as Security',
+        explanation: 'Mining converts electricity into security. The more energy spent, the harder it is to rewrite the chain (51% attack).\n\nBitcoin does not "waste" energy; it uses energy to secure the first incorruptible monetary network.',
+        question: 'What happens if we lower the energy usage?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Security decreases', isCorrect: true, feedback: 'Correct. Lower cost to attack means the ledger is less secure.' },
+            { id: 'o2', label: 'Price goes up', isCorrect: false, feedback: 'Price is correlated with utility and security, not just efficiency.' }
+        ]
+      }
+    ]
+  },
+  '1.8': {
+    id: '1.8',
+    steps: [
+      {
+        id: 's1',
+        title: 'The Giveaway Scam',
+        explanation: '"Send 1 BTC, get 2 BTC back!"\n\nThis is the most common scam. There is no such thing as free money. Vitalik, Elon, or Saylor will never ask you to send them crypto.',
+        question: 'You see a Youtube Live of Michael Saylor promising to double your coins. Real?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Scam', isCorrect: true, feedback: 'Correct. Deepfakes are common. Never send money to receive money.' },
+            { id: 'o2', label: 'Maybe Real', isCorrect: false, feedback: 'Incorrect. It is 100% a scam.' }
+        ]
+      }
+    ]
+  },
+  '1.9': {
+    id: '1.9',
+    steps: [
+      {
+        id: 's1',
+        title: 'Scaling Layers',
+        explanation: 'Bitcoin base layer (L1) is for final settlement. It is slow and expensive, like a wire transfer.\n\nLightning (L2) is for coffee. It is instant and cheap, like Visa, but decentralized.',
+        question: 'Should you buy coffee on-chain?',
+        visualType: 'TIMELINE',
+        options: [
+            { id: 'o1', label: 'No', isCorrect: true, feedback: 'Correct. Paying a $5 fee for a $3 coffee makes no sense. Use Lightning.' },
+            { id: 'o2', label: 'Yes', isCorrect: false, feedback: 'You will clog the blocks and waste money.' }
+        ]
+      }
+    ]
+  },
+  '1.10': {
+    id: '1.10',
+    steps: [
+      {
+        id: 's1',
+        title: 'Circular Economy',
+        explanation: 'If you earn in Fiat and buy Bitcoin, you pay exchange fees.\n\nIf you EARN Bitcoin directly, you skip the exchange and the KYC. Spending Bitcoin at merchants who keep it closes the loop.',
+        question: 'What is the most sovereign way to acquire Bitcoin?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Buying on Coinbase', isCorrect: false, feedback: 'This links your ID to your coins.' },
+            { id: 'o2', label: 'Earning it', isCorrect: true, feedback: 'Correct. Trading value for value preserves privacy.' }
+        ]
+      }
+    ]
+  },
+  '1.11': {
+    id: '1.11',
+    steps: [
+      {
+        id: 's1',
+        title: 'The Sovereign Mindset',
+        explanation: 'Bitcoin is responsibility. There is no "Forgot Password" button. There is no bank to reverse a fraud.\n\nThis scares some, but empowers others. You are the central bank.',
+        question: 'Who is responsible if you lose your keys?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'The Protocol Developers', isCorrect: false, feedback: 'Code is law, but custody is yours.' },
+            { id: 'o2', label: 'You', isCorrect: true, feedback: 'Correct. Extreme ownership is the price of freedom.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 2: WALLET MASTERY ---
+  '2.1': {
+    id: '2.1',
+    steps: [
+      {
+        id: 's1',
+        title: 'Hot vs Cold Wallets',
+        explanation: 'A Hot Wallet is connected to the internet (Mobile App). Convenient but hackable.\n\nA Cold Wallet (Hardware) keeps keys offline. The internet never sees your seed.',
+        question: 'Where should you keep your life savings?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Hot Wallet', isCorrect: false, feedback: 'Too risky for large amounts.' },
+            { id: 'o2', label: 'Cold Storage', isCorrect: true, feedback: 'Correct. Offline keys are immune to remote hackers.' }
+        ]
+      }
+    ]
+  },
+  '2.2': {
+    id: '2.2',
+    steps: [
+      {
+        id: 's1',
+        title: 'Steel vs Paper',
+        explanation: 'Paper burns. Ink fades. Water destroys.\n\nFor long-term storage, stamp your seed words into stainless steel or titanium. It must survive a house fire.',
+        question: 'Is a paper backup sufficient for 10 years?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'No', isCorrect: true, feedback: 'Correct. Environmental decay is a real threat.' },
+            { id: 'o2', label: 'Yes', isCorrect: false, feedback: 'Only if stored in a bank vault, which adds third-party risk.' }
+        ]
+      }
+    ]
+  },
+  '2.3': {
+    id: '2.3',
+    steps: [
+      {
+        id: 's1',
+        title: 'Single Points of Failure',
+        explanation: 'A standard wallet has one key. If you lose it, money gone. If stolen, money gone.\n\nMultisig (2-of-3) requires 2 keys to spend. You can lose one key and still recover funds.',
+        question: 'What is the main benefit of Multisig?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Faster transactions', isCorrect: false, feedback: 'Multisig is slightly slower/more complex.' },
+            { id: 'o2', label: 'Fault Tolerance', isCorrect: true, feedback: 'Correct. It removes the single point of failure.' }
+        ]
+      }
+    ]
+  },
+  '2.4': {
+    id: '2.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'Coin Control',
+        explanation: 'Your wallet balance is made of chunks (UTXOs). Some might be KYC\'d (from exchange), some non-KYC.\n\nIf you combine them in one transaction, you link your identities. Coin Control allows you to select which chunks to spend.',
+        question: 'Why separate KYC and non-KYC coins?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Privacy', isCorrect: true, feedback: 'Correct. Prevent chain analysis from clustering your activity.' },
+            { id: 'o2', label: 'Fees', isCorrect: false, feedback: 'Fees depend on data size, not privacy.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 3: PROTOCOL ENGINEER ---
+  '3.1': {
+    id: '3.1',
+    steps: [
+      {
+        id: 's1',
+        title: 'Soft Fork vs Hard Fork',
+        explanation: 'A Soft Fork tightens rules (backward compatible). Old nodes still accept new blocks.\n\nA Hard Fork loosens rules (not compatible). Old nodes reject new blocks, splitting the chain.',
+        question: 'Which upgrade type is safer for network cohesion?',
+        visualType: 'BLOCKCHAIN',
+        options: [
+            { id: 'o1', label: 'Soft Fork', isCorrect: true, feedback: 'Correct. It avoids splitting the community and currency.' },
+            { id: 'o2', label: 'Hard Fork', isCorrect: false, feedback: 'Incorrect. Hard forks force users to choose sides.' }
+        ]
+      }
+    ]
+  },
+  '3.2': {
+    id: '3.2',
+    steps: [
+      {
+        id: 's1',
+        title: 'Anatomy of a UTXO',
+        explanation: 'Bitcoin uses Unspent Transaction Outputs. You don\'t have a "balance"; you have a pile of checks written to you.\n\nTo spend 0.5 BTC, you might have to melt down a 1.0 BTC coin and send 0.5 to yourself as "change".',
+        question: 'What happens to the change in a transaction?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'It disappears', isCorrect: false, feedback: 'No, that would be deflationary/loss.' },
+            { id: 'o2', label: 'Sent to a new address you control', isCorrect: true, feedback: 'Correct. Change addresses are automatically generated by your wallet.' }
+        ]
+      }
+    ]
+  },
+  // 3.3 is BUILDER_CONTENT
+  '3.4': {
+    id: '3.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'The Nash Equilibrium',
+        explanation: 'Miners engage in a game where honesty is profitable and cheating is expensive.\n\nIf a miner tries to cheat (double spend), they waste electricity and their block is rejected. They lose money.',
+        question: 'What secures Bitcoin?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Goodwill', isCorrect: false, feedback: 'Hope is not a strategy.' },
+            { id: 'o2', label: 'Greed/Incentives', isCorrect: true, feedback: 'Correct. The system aligns self-interest with network security.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 4: LIGHTNING OPERATOR ---
+  '4.1': {
+    id: '4.1',
+    steps: [
+      {
+        id: 's1',
+        title: 'Payment Channels',
+        explanation: 'A Lightning channel is a 2-of-2 multisig address. Both parties put money in.\n\nTo pay, you don\'t move funds on blockchain; you just update the local balance sheet signed by both parties.',
+        question: 'When does a Lightning tx hit the blockchain?',
+        visualType: 'TIMELINE',
+        options: [
+            { id: 'o1', label: 'Every transaction', isCorrect: false, feedback: 'That is L1.' },
+            { id: 'o2', label: 'Only on Open/Close', isCorrect: true, feedback: 'Correct. Millions of trades can happen between the opening and closing transactions.' }
+        ]
+      }
+    ]
+  },
+  // 4.2 is BUILDER, 4.3 is LAB
+  '4.4': {
+    id: '4.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'Channel Management',
+        explanation: 'Routing nodes earn fees by forwarding payments. If your channel is empty on one side, you cannot route in that direction.\n\n"Rebalancing" is the art of keeping liquidity fluid.',
+        question: 'What happens if your local balance is 0?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'You can only receive', isCorrect: true, feedback: 'Correct. You have no funds to push to the other side.' },
+            { id: 'o2', label: 'You can only send', isCorrect: false, feedback: 'You need local balance to send.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 5: SOVEREIGN MERCHANT ---
+  // 5.1 is BUILDER
+  '5.2': {
+    id: '5.2',
+    steps: [
+      {
+        id: 's1',
+        title: 'Volatility Management',
+        explanation: 'Merchants have bills in Fiat. If Bitcoin drops 10%, they lose margin.\n\nStrategy: Auto-convert percentage of sales to Fiat/Stablecoins to cover costs, keep profit in BTC.',
+        question: 'Why not keep 100% in BTC?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Operational Risk', isCorrect: true, feedback: 'Correct. Short term volatility can bankrupt a business with tight margins.' },
+            { id: 'o2', label: 'BTC is bad money', isCorrect: false, feedback: 'BTC is good money, but volatility is the price of price discovery.' }
+        ]
+      }
+    ]
+  },
+  '5.3': {
+    id: '5.3',
+    steps: [
+      {
+        id: 's1',
+        title: 'Proof of Payment',
+        explanation: 'In Lightning, the "Preimage" is a cryptographic proof that you paid an invoice. \n\nIf a customer claims "I paid but didn\'t get the product", you ask for the preimage. If they have it, they paid.',
+        question: 'Can a customer fake a preimage?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'No', isCorrect: true, feedback: 'Correct. It is cryptographically generated by the receiver (you) and only revealed upon payment.' },
+            { id: 'o2', label: 'Yes', isCorrect: false, feedback: 'Impossible in the protocol.' }
+        ]
+      }
+    ]
+  },
+  '5.4': {
+    id: '5.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'Regulatory Defense',
+        explanation: 'Using a self-hosted BTCPay Server keeps your customer data private.\n\nUsing a third-party processor (BitPay) leaks customer data and allows the processor to block payments.',
+        question: 'Why self-host payments?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Censorship Resistance', isCorrect: true, feedback: 'Correct. No one can stop a payment to your own node.' },
+            { id: 'o2', label: 'It is easier', isCorrect: false, feedback: 'It is harder, but worth it.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 6: SECURITY PRACTITIONER ---
+  '6.1': {
+    id: '6.1',
+    steps: [
+      {
+        id: 's1',
+        title: 'Attack Surface',
+        explanation: 'The more complex your setup, the more holes it has.\n\nA laptop with 50 apps, WiFi, and Bluetooth is a "High Attack Surface". A hardware wallet with no wireless is "Low Attack Surface".',
+        question: 'Where should you generate keys?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Windows Desktop', isCorrect: false, feedback: 'Malware prone.' },
+            { id: 'o2', label: 'Dedicated Hardware', isCorrect: true, feedback: 'Correct. Minimal code means minimal bugs.' }
+        ]
+      }
+    ]
+  },
+  '6.2': {
+    id: '6.2',
+    steps: [
+      {
+        id: 's1',
+        title: 'Air Gaps',
+        explanation: 'An Air Gapped computer never touches the internet. You move data via SD Card or QR Code.\n\nThis physically prevents remote extraction of private keys.',
+        question: 'Can a hacker access an air-gapped device?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Yes, via WiFi', isCorrect: false, feedback: 'There is no WiFi.' },
+            { id: 'o2', label: 'Only with physical access', isCorrect: true, feedback: 'Correct. Or via "Evil Maid" attacks (tampering with hardware).' }
+        ]
+      }
+    ]
+  },
+  // 6.3 is CUSTOM LAB
+  '6.4': {
+    id: '6.4',
+    steps: [
+      {
+        id: 's1',
+        title: 'Incident Response',
+        explanation: 'You accidentally pasted your seed phrase into ChatGPT. What do you do?\n\n1. DISCONNECT INTERNET IMMEDIATELY.\n2. Sweep funds to a new wallet using a clean device.',
+        question: 'Should you wait to see if funds move?',
+        visualType: 'CARDS',
+        options: [
+            { id: 'o1', label: 'Yes', isCorrect: false, feedback: 'Bots will sweep it in seconds.' },
+            { id: 'o2', label: 'No, Sweep immediately', isCorrect: true, feedback: 'Correct. It is a race against scripts.' }
+        ]
+      }
+    ]
+  },
+
+  // --- PATH 7: P2P MARKET (Existing) ---
   '7.1': {
     id: '7.1',
     steps: [
@@ -87,8 +542,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 7.2: Escrow and Dispute Resolution ---
   '7.2': {
     id: '7.2',
     steps: [
@@ -127,8 +580,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 7.3: Reputation Dynamics ---
   '7.3': {
     id: '7.3',
     steps: [
@@ -156,8 +607,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 7.4: Regulatory & Adversarial Ops ---
   '7.4': {
     id: '7.4',
     steps: [
@@ -186,7 +635,7 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
     ]
   },
 
-  // --- MODULE 8.1: Education System Design ---
+  // --- PATH 8: COMMUNITY BUILDER (Existing) ---
   '8.1': {
     id: '8.1',
     steps: [
@@ -214,8 +663,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 8.2: Governance & Conflict ---
   '8.2': {
     id: '8.2',
     steps: [
@@ -243,8 +690,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 8.3: Circular Economy Construction ---
   '8.3': {
     id: '8.3',
     steps: [
@@ -272,8 +717,6 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   },
-
-  // --- MODULE 8.4: Social Resilience ---
   '8.4': {
     id: '8.4',
     steps: [

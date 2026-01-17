@@ -8,10 +8,13 @@ import { Rank } from './views/Rank';
 import { UTXOLab } from './simulations/UTXOLab';
 import { LightningSandbox } from './simulations/LightningSandbox';
 import { PhishingDefense } from './simulations/PhishingDefense';
+import { EntropyLab } from './simulations/EntropyLab';
+import { P2PTradingDesk } from './simulations/P2PTradingDesk';
 import { AdversarialStressTest } from './simulations/AdversarialStressTest';
 import { StandardSimulation } from './views/StandardSimulation';
 import { BuilderSimulation } from './views/BuilderSimulation';
 import { Audit } from './views/Audit';
+import { PathSuccess } from './views/PathSuccess';
 import { Profile } from './views/Profile';
 import { DailyBonusModal } from './components/DailyBonusModal';
 import { NotificationModal } from './components/NotificationModal';
@@ -25,10 +28,10 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>(View.LOGIN); // Start at Login
   const [userState, setUserState] = useState<UserState>(INITIAL_USER_STATE);
   const [activeSimulation, setActiveSimulation] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
   
   // Daily Bonus State
   const [showDailyBonus, setShowDailyBonus] = useState(false);
-  const [hasClaimedDaily, setHasClaimedDaily] = useState(false);
 
   // Notification State
   const [currentNotification, setCurrentNotification] = useState<any>(null);
@@ -49,14 +52,26 @@ const App: React.FC = () => {
 
   // Trigger daily bonus
   useEffect(() => {
-    // Only show bonus if no critical notifications are pending
-    if (view === View.DASHBOARD && !hasClaimedDaily && !showDailyBonus && !currentNotification) {
-        const timer = setTimeout(() => {
-            setShowDailyBonus(true);
-        }, 800);
-        return () => clearTimeout(timer);
+    // Only show bonus if no critical notifications are pending and user is on dashboard
+    if (view === View.DASHBOARD && !showDailyBonus && !currentNotification) {
+        
+        const hasClaimedToday = () => {
+            if (!userState.lastDailyClaim) return false;
+            const last = new Date(userState.lastDailyClaim);
+            const now = new Date();
+            return last.getDate() === now.getDate() &&
+                   last.getMonth() === now.getMonth() &&
+                   last.getFullYear() === now.getFullYear();
+        };
+
+        if (!hasClaimedToday()) {
+            const timer = setTimeout(() => {
+                setShowDailyBonus(true);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
     }
-  }, [view, hasClaimedDaily, showDailyBonus, currentNotification]);
+  }, [view, showDailyBonus, currentNotification, userState.lastDailyClaim]);
 
   // Auth Handlers
   const handleNostrLogin = async () => {
@@ -115,6 +130,31 @@ const App: React.FC = () => {
     }
   };
 
+  // --- PENALTY LOGIC ---
+  const handleMistake = (amount: number = 5) => {
+      setUserState(prev => ({
+          ...prev,
+          reputation: Math.max(0, prev.reputation - amount)
+      }));
+  };
+
+  const handleMajorPenalty = (amount: number = 100, reason: string) => {
+      setUserState(prev => {
+          const newReputation = Math.max(0, prev.reputation - amount);
+          return {
+              ...prev,
+              reputation: newReputation,
+              notifications: [...prev.notifications, {
+                  id: Date.now().toString(),
+                  type: 'PENALTY',
+                  title: 'Slashing Event',
+                  message: `${reason} -${amount} XP penalty applied to your reputation.`,
+                  data: { amount }
+              }]
+          };
+      });
+  };
+
   const handleSimulationComplete = () => {
     if (!activeSimulation) return;
 
@@ -125,6 +165,9 @@ const App: React.FC = () => {
         const mod = p.modules.find(m => m.id === activeSimulation);
         if (mod) xpGain = mod.xp;
     }
+    // Check custom labs
+    if (activeSimulation === 'LAB_P2P') xpGain = 350;
+    if (activeSimulation === '6.2') xpGain = 300;
 
     // Mark complete & Add XP
     const updatedCompleted = [...userState.completedModules];
@@ -161,9 +204,9 @@ const App: React.FC = () => {
       setUserState(prev => ({
           ...prev,
           reputation: prev.reputation + amount,
-          streak: prev.streak + 1
+          streak: prev.streak + 1,
+          lastDailyClaim: new Date().toISOString()
       }));
-      setHasClaimedDaily(true);
       setShowDailyBonus(false);
   };
 
@@ -179,13 +222,24 @@ const App: React.FC = () => {
   const renderSimulation = () => {
     if (!activeSimulation) return null;
 
-    if (activeSimulation === '1.4' && userState.currentPath === PathId.SOVEREIGN) return <StandardSimulation content={MODULE_CONTENT['1.4']} onComplete={handleSimulationComplete} onExit={() => setView(View.DASHBOARD)} />;
+    if (activeSimulation === 'LAB_UTXO') return <UTXOLab onComplete={handleSimulationComplete} />;
     if (activeSimulation === '4.3') return <LightningSandbox onComplete={handleSimulationComplete} />;
-    if (activeSimulation === '6.3') return <PhishingDefense onComplete={handleSimulationComplete} />;
+    if (activeSimulation === '6.3' || activeSimulation === '6.1') return <PhishingDefense onComplete={handleSimulationComplete} />;
+    
+    // New Simulators
+    if (activeSimulation === '6.2') return <EntropyLab onComplete={handleSimulationComplete} devMode={devMode} />;
+    if (activeSimulation === 'LAB_P2P') return <P2PTradingDesk onComplete={handleSimulationComplete} devMode={devMode} />;
 
     const content = MODULE_CONTENT[activeSimulation];
     if (content) {
-        return <StandardSimulation content={content} onComplete={handleSimulationComplete} onExit={() => setView(View.DASHBOARD)} />;
+        return (
+            <StandardSimulation 
+                content={content} 
+                onComplete={handleSimulationComplete} 
+                onExit={() => setView(View.DASHBOARD)} 
+                onMistake={() => handleMistake(5)}
+            />
+        );
     }
 
     return (
@@ -220,12 +274,13 @@ const App: React.FC = () => {
           onViewProfile={() => setView(View.PROFILE)}
           onEnterStressTest={() => setView(View.STRESS_TEST)}
           onPathChange={handlePathChange}
-          userState={userState} // Correctly passed prop
+          userState={userState}
+          devMode={devMode}
         />
       )}
 
       {view === View.LABS && (
-        <Labs onSelectModule={handleModuleSelect} />
+        <Labs onSelectModule={handleModuleSelect} userState={userState} />
       )}
 
       {view === View.RANK && (
@@ -246,9 +301,22 @@ const App: React.FC = () => {
         <AdversarialStressTest 
             pathId={userState.currentPath || PathId.SOVEREIGN}
             onComplete={(success, score) => {
-                setView(View.AUDIT);
+                if(success) {
+                    setView(View.PATH_SUCCESS);
+                } else {
+                    handleMajorPenalty(100, "Operational Failure in Stress Test");
+                    setView(View.DASHBOARD); 
+                }
             }} 
             onExit={() => setView(View.DASHBOARD)} 
+            devMode={devMode}
+        />
+      )}
+
+      {view === View.PATH_SUCCESS && (
+        <PathSuccess 
+            pathId={userState.currentPath || PathId.SOVEREIGN}
+            onReturn={() => setView(View.DASHBOARD)} 
         />
       )}
 
@@ -257,7 +325,7 @@ const App: React.FC = () => {
       )}
 
       {view === View.PROFILE && (
-        <Profile user={userState} onLogout={handleLogout} />
+        <Profile user={userState} onLogout={handleLogout} devMode={devMode} setDevMode={setDevMode} />
       )}
 
       {showDailyBonus && (

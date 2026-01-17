@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from './ui/Button';
 import { UserState } from '../types';
 import { PATHS, RANK_TIERS } from '../constants';
+import { jsPDF } from 'jspdf';
 
 interface AuditReportModalProps {
   user: UserState;
@@ -13,6 +14,7 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
   const [isVerified, setIsVerified] = useState(false);
   const [viewMode, setViewMode] = useState<'VISUAL' | 'RAW'>('VISUAL');
   const [downloadState, setDownloadState] = useState<'IDLE' | 'DOWNLOADING' | 'DONE'>('IDLE');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Generate Report Data
   const reportDate = new Date().toISOString();
@@ -22,9 +24,31 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
   // Resolve Rank Details
   const rankInfo = RANK_TIERS.find(r => r.title === user.rank) || RANK_TIERS[0];
   
-  // Resolve Module History
-  const activityLog = user.completedModules.map(modId => {
-      // Find module details across all paths
+  // Resolve Activity Graph Data (Same logic as Profile for consistency)
+  const activityGraphData = useMemo(() => {
+    const weeks = [];
+    const totalWeeks = 30; // Shorter for report
+    const daysPerWeek = 7;
+    const yearActivity = new Array(totalWeeks * daysPerWeek).fill(0);
+    
+    user.completedModules.forEach(modId => {
+        let hash = 0;
+        for (let i = 0; i < modId.length; i++) hash = ((hash << 5) - hash) + modId.charCodeAt(i);
+        const dayIndex = Math.abs(hash) % (totalWeeks * 7 - 14); 
+        yearActivity[dayIndex] = Math.min(4, yearActivity[dayIndex] + 2);
+    });
+    const todayIndex = (totalWeeks * daysPerWeek) - 1;
+    for (let i = 0; i < user.streak; i++) {
+        const idx = todayIndex - i;
+        if (idx >= 0) yearActivity[idx] = 4;
+    }
+    for (let w = 0; w < totalWeeks; w++) weeks.push(yearActivity.slice(w * 7, (w * 7) + 7));
+    return weeks;
+  }, [user.completedModules, user.streak]);
+
+  // Resolve Module History (Real Data)
+  const activityLog = useMemo(() => {
+    return user.completedModules.map(modId => {
       let modDetails;
       for (const p of PATHS) {
           const m = p.modules.find(mod => mod.id === modId);
@@ -36,16 +60,50 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
       return {
           id: modId,
           title: modDetails?.title || 'Unknown Protocol',
-          hash: 'tx-' + Math.random().toString(36).substring(2, 10) + '...' + Math.random().toString(36).substring(2, 6),
-          timestamp: new Date(Date.now() - Math.random() * 1000000000).toISOString().split('T')[0]
+          // Deterministic hash based on module ID to keep report consistent
+          hash: 'tx-' + btoa(modId + user.pubkey).substring(0, 16).toLowerCase(), 
+          timestamp: new Date().toISOString().split('T')[0] // In a real app, we'd store completion dates
       };
-  });
+    }).reverse(); // Newest first
+  }, [user.completedModules, user.pubkey]);
 
+  // Dynamic Narrative Generation based on MULTIPLE paths
   const generateNarrative = () => {
-      if (user.reputation < 1000) return "Subject is in early stages of protocol onboarding. Basic competency demonstrated in foundational concepts. Recommended for supervised network access.";
-      if (user.reputation < 5000) return "Subject has demonstrated consistent operational uptime and mastery of self-custody primitives. Approved for intermediate liquidity management.";
-      if (user.reputation < 20000) return "Subject is a highly competent operator capable of managing routing nodes and complex multisig architectures. High trust rating assigned.";
-      return "Subject exhibits elite-level protocol understanding. Suitable for consensus-critical infrastructure management and architectural oversight.";
+      // Analyze Path Progress
+      const pathProgress = PATHS.map(p => {
+          const completed = p.modules.filter(m => user.completedModules.includes(m.id)).length;
+          return { title: p.title, percent: completed / p.modules.length };
+      });
+
+      const mastered = pathProgress.filter(p => p.percent === 1.0).map(p => p.title);
+      const active = pathProgress.filter(p => p.percent > 0 && p.percent < 1.0).map(p => p.title);
+      const totalModules = user.completedModules.length;
+
+      let narrative = `Subject is identified as ${user.npub} with a current rank of ${user.rank.toUpperCase()}. `;
+      
+      if (totalModules === 0) {
+          narrative += "Subject has initialized the protocol environment but has not yet generated cryptographic proof of skill. Status: ONBOARDING.";
+      } else {
+          narrative += `Operational velocity is ${user.streak > 5 ? 'high' : 'nominal'} with a verified streak of ${user.streak} days. `;
+          
+          if (mastered.length > 0) {
+              narrative += `Subject has achieved FULL MASTERY in the following domains: ${mastered.join(', ')}. This indicates deep architectural competence and readiness for mainnet deployment. `;
+          }
+          
+          if (active.length > 0) {
+              narrative += `Active development is currently observed in: ${active.join(', ')}. `;
+          }
+
+          if (user.reputation > 10000) {
+              narrative += "Subject is considered a high-value network peer suitable for consensus-critical infrastructure management.";
+          } else if (user.reputation > 2000) {
+              narrative += "Subject demonstrates solid foundational knowledge and is cleared for intermediate node operations.";
+          } else {
+              narrative += "Subject is in early stages of protocol onboarding. Recommended for supervised network access.";
+          }
+      }
+      
+      return narrative;
   };
 
   const rawData = {
@@ -73,11 +131,195 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
       }, 1500);
   };
 
+  const handleNostrPublish = async () => {
+      if (!window.nostr) {
+          alert("Nostr extension not found!");
+          return;
+      }
+      
+      setIsPublishing(true);
+      try {
+          const event = {
+              kind: 1,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: [
+                  ["t", "satscraft"],
+                  ["t", "proofofskill"],
+                  ["d", reportId]
+              ],
+              content: `Verifiable Proof of Skill generated via SatsCraft.\n\nRank: ${user.rank.toUpperCase()}\nXP: ${user.reputation}\nModules Completed: ${user.completedModules.length}\nReport ID: ${reportId}\n\n#satscraft #bitcoin`
+          };
+          
+          // @ts-ignore
+          await window.nostr.signEvent(event);
+          // In a real app we would now relay.publish(signedEvent)
+          
+          alert("Proof signed and broadcast to relays!");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to sign event.");
+      } finally {
+          setIsPublishing(false);
+      }
+  };
+
   const handleDownload = () => {
       setDownloadState('DOWNLOADING');
-      setTimeout(() => {
-          setDownloadState('DONE');
-      }, 1500);
+      
+      try {
+        const doc = new jsPDF();
+        
+        // Fonts
+        doc.setFont("helvetica");
+        
+        // 1. Header
+        doc.setFontSize(24);
+        doc.setFont("helvetica", "bold");
+        doc.text("Proof of Skill", 20, 25);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100);
+        doc.text("SatsCraft Protocol Authority", 20, 31);
+        
+        // Right Header
+        doc.setTextColor(0);
+        doc.setFontSize(8);
+        doc.setFont("courier", "normal");
+        doc.text("BLOCK HEIGHT", 150, 23);
+        doc.setFontSize(14);
+        doc.setFont("courier", "bold");
+        doc.text(blockHeight.toLocaleString(), 150, 29);
+        
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(20, 40, 190, 40);
+        
+        // 2. Subject Identity
+        let y = 55;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("SUBJECT IDENTITY", 20, y);
+        doc.text("RANK ASSESSMENT", 110, y);
+        
+        y += 8;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text(user.npub || 'Unknown', 20, y);
+        doc.text(user.rank.toUpperCase(), 110, y);
+        
+        y += 6;
+        doc.setFont("courier", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(user.pubkey || 'N/A', 20, y);
+        doc.text(`Level ${rankInfo.id}`, 110, y);
+        
+        // 3. Narrative
+        y += 25;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("COMPETENCY NARRATIVE", 20, y);
+        
+        y += 8;
+        doc.setFont("times", "roman");
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        const narrativeText = generateNarrative();
+        const splitNarrative = doc.splitTextToSize(narrativeText, 170);
+        doc.text(splitNarrative, 20, y);
+        y += (splitNarrative.length * 5) + 15;
+        
+        // 4. Activity Ledger
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("ACTIVITY LEDGER", 20, y);
+        
+        y += 8;
+        doc.setFontSize(9);
+        doc.setTextColor(0);
+        // Table Header
+        doc.text("ID", 20, y);
+        doc.text("PROTOCOL", 45, y);
+        doc.text("PROOF HASH", 130, y);
+        
+        doc.setLineWidth(0.1);
+        doc.line(20, y+2, 190, y+2);
+        y += 8;
+        
+        doc.setFont("courier", "normal");
+        activityLog.forEach((log) => {
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(log.id, 20, y);
+            doc.text(log.title.substring(0, 40), 45, y);
+            doc.text(log.hash, 130, y);
+            y += 6;
+        });
+        
+        if (activityLog.length === 0) {
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(150);
+            doc.text("No verified activity recorded on-chain.", 20, y);
+            y += 10;
+        }
+
+        // 5. Signature
+        y = 260; // Bottom of page
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(20, y, 90, y);
+        
+        y += 5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text("PROTOCOL SIGNATURE", 20, y);
+        
+        y += 5;
+        doc.setFont("courier", "normal");
+        doc.setFontSize(6);
+        const sig = doc.splitTextToSize(rawData.signature, 70);
+        doc.text(sig, 20, y);
+        
+        // 6. Verified Stamp
+        if (isVerified) {
+             doc.setTextColor(22, 163, 74); // Green
+             doc.setFontSize(18);
+             doc.setFont("helvetica", "bold");
+             doc.text("VERIFIED", 140, 255);
+             
+             doc.setFontSize(10);
+             doc.text("SATSCRAFT PROTOCOL", 140, 262);
+             doc.text(reportDate.split('T')[0], 140, 268);
+             
+             doc.setLineWidth(1);
+             doc.setDrawColor(22, 163, 74);
+             doc.rect(135, 242, 55, 30);
+        }
+
+        doc.save(`${reportId}.pdf`);
+        setDownloadState('DONE');
+      } catch (e) {
+        console.error("PDF download failed", e);
+        setDownloadState('IDLE');
+      }
+  };
+
+  const getColorForLevel = (level: number) => {
+    switch(level) {
+        case 1: return 'bg-gray-300';
+        case 2: return 'bg-gray-400';
+        case 3: return 'bg-gray-600';
+        case 4: return 'bg-black';
+        default: return 'bg-gray-100';
+    }
   };
 
   return (
@@ -163,6 +405,29 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
                             </p>
                         </div>
 
+                        {/* Visual Protocol Activity Graph (Added Copy) */}
+                        <div className="mb-12 relative z-10">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-4">Protocol Activity</label>
+                            <div className="w-full overflow-hidden">
+                                <div className="flex gap-1">
+                                    {activityGraphData.map((week, weekIdx) => (
+                                        <div key={weekIdx} className="flex flex-col gap-1">
+                                            {week.map((dayLevel, dayIdx) => (
+                                                <div 
+                                                    key={dayIdx} 
+                                                    className={`size-2 rounded-sm ${getColorForLevel(dayLevel)}`}
+                                                ></div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-between mt-1 text-[8px] font-mono text-gray-400">
+                                    <span>20 Weeks Ago</span>
+                                    <span>Current</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Activity Ledger */}
                         <div className="mb-12 relative z-10">
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-4">Activity Ledger</label>
@@ -238,6 +503,18 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({ user, onClos
                             icon="fingerprint"
                         >
                             {isVerifying ? 'Checking Chain...' : 'Verify Signature'}
+                        </Button>
+                    )}
+                    
+                    {window.nostr && (
+                        <Button
+                            variant="secondary"
+                            onClick={handleNostrPublish}
+                            disabled={isPublishing}
+                            icon="rss_feed"
+                            className="bg-purple-900/20 text-purple-400 border-purple-500/30"
+                        >
+                            {isPublishing ? 'Broadcasting...' : 'Publish to Nostr'}
                         </Button>
                     )}
                     

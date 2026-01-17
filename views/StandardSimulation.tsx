@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
-import { ModuleContent, SimulationStep } from '../types';
+import { ModuleContent, SimulationOption } from '../types';
 
 interface StandardSimulationProps {
   content: ModuleContent;
   onComplete: () => void;
   onExit: () => void;
+  onMistake?: () => void;
 }
 
-export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content, onComplete, onExit }) => {
+export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content, onComplete, onExit, onMistake }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasFailed, setHasFailed] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [shuffledOptions, setShuffledOptions] = useState<SimulationOption[]>([]);
 
   const currentStep = content.steps[currentStepIndex];
   const isLastStep = currentStepIndex === content.steps.length - 1;
+
+  // Shuffle options whenever the step changes to prevent position memorization
+  useEffect(() => {
+    if (currentStep.options) {
+        // Fisher-Yates shuffle or simple sort
+        const optionsCopy = [...currentStep.options];
+        for (let i = optionsCopy.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [optionsCopy[i], optionsCopy[j]] = [optionsCopy[j], optionsCopy[i]];
+        }
+        setShuffledOptions(optionsCopy);
+    } else {
+        setShuffledOptions([]);
+    }
+    
+    // Reset state for new step
+    setSelectedOption(null);
+    setFeedback(null);
+    setHasFailed(false);
+  }, [currentStepIndex, content]); // Re-run when step index or content changes
 
   const handleOptionSelect = (optionId: string) => {
     if (selectedOption) return; // Prevent multiple clicks
@@ -27,13 +49,14 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
         setFeedback(option.feedback);
         if (!option.isCorrect) {
             setHasFailed(true);
+            if (onMistake) onMistake();
         }
     }
   };
 
   const handleContinue = () => {
     if (hasFailed) {
-        // Reset step to retry
+        // Reset purely visual state to allow retry, but keep shuffle order
         setHasFailed(false);
         setSelectedOption(null);
         setFeedback(null);
@@ -42,8 +65,6 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
             onComplete();
         } else {
             setCurrentStepIndex(prev => prev + 1);
-            setSelectedOption(null);
-            setFeedback(null);
         }
     }
   };
@@ -91,7 +112,28 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                      </div>
                 </div>
             );
-        default: // CARDS or default
+        case 'TERMINAL':
+            return (
+                <div className="w-full max-w-2xl bg-black rounded-lg border border-white/20 p-4 font-mono text-xs shadow-2xl relative h-64 overflow-hidden flex flex-col">
+                    <div className="flex gap-1.5 mb-4 shrink-0">
+                        <div className="size-3 rounded-full bg-red-500/50"></div>
+                        <div className="size-3 rounded-full bg-yellow-500/50"></div>
+                        <div className="size-3 rounded-full bg-green-500/50"></div>
+                    </div>
+                    <div className="space-y-1 text-text-muted flex-1">
+                        <p>Last login: {new Date().toUTCString()} on ttys001</p>
+                        <p className="text-white">user@bitcoin-node:~$ <span className="text-primary font-bold">./bitcoin-cli getblockchaininfo</span></p>
+                        <p className="text-success">{`{
+  "chain": "main",
+  "blocks": 840021,
+  "headers": 840021,
+  "verificationprogress": 0.99999
+}`}</p>
+                        <p className="text-white mt-2">user@bitcoin-node:~$ <span className="animate-pulse">_</span></p>
+                    </div>
+                </div>
+            );
+        default: 
             return (
                 <div className="flex items-center justify-center h-48 md:h-64">
                     <span className="material-symbols-outlined text-9xl text-primary/10">schema</span>
@@ -109,10 +151,14 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                 <span className="material-symbols-outlined text-base">arrow_back</span>
                 Abort Simulation
             </button>
-            <div className="inline-flex items-center gap-2 px-2 py-1 rounded border border-primary/20 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider mb-4">
-                <span className="size-1.5 rounded-full bg-primary animate-pulse"></span>
-                Context Loaded
+            
+            <div className="flex items-center gap-2 mb-4">
+                 <div className="inline-flex items-center gap-2 px-2 py-1 rounded border border-primary/20 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider">
+                    <span className="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                    Scenario Context
+                </div>
             </div>
+
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-6 font-display leading-tight">{currentStep.title}</h1>
             
             <div className="prose prose-invert prose-sm prose-p:text-text-muted prose-p:leading-7 prose-headings:text-white">
@@ -145,19 +191,23 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                 {/* NEW: Explicit Question Rendering */}
                 {currentStep.question && (
                     <div className="mt-8 md:mt-12 text-center">
-                        <h2 className="text-xl md:text-2xl font-bold text-white font-display leading-snug">
+                        <div className="inline-block mb-3 px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+                            Critical Decision
+                        </div>
+                        <h2 className="text-xl md:text-3xl font-bold text-white font-display leading-snug">
                             {currentStep.question}
                         </h2>
                     </div>
                 )}
                 
+                {/* Options Grid - Using Shuffled Options */}
                 <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 w-full ${currentStep.question ? 'mt-8' : 'mt-16'}`}>
-                    {currentStep.options?.map(opt => (
+                    {shuffledOptions.map(opt => (
                         <button
                             key={opt.id}
                             onClick={() => handleOptionSelect(opt.id)}
                             disabled={!!selectedOption}
-                            className={`p-6 rounded-2xl border text-left transition-all duration-300 group relative overflow-hidden flex flex-col gap-2
+                            className={`p-6 rounded-2xl border text-left transition-all duration-300 group relative overflow-hidden flex flex-col gap-2 min-h-[140px]
                                 ${selectedOption === opt.id 
                                     ? (opt.isCorrect 
                                         ? 'bg-success/10 border-success text-white shadow-[0_0_20px_-5px_rgba(34,197,94,0.3)] scale-[1.02]' 
@@ -169,7 +219,7 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                                 {opt.isCorrect && selectedOption === opt.id ? 'check_circle' : 
                                  !opt.isCorrect && selectedOption === opt.id ? 'cancel' : 'radio_button_unchecked'}
                             </span>
-                            <h3 className="font-bold text-lg relative z-10">{opt.label}</h3>
+                            <h3 className="font-bold text-lg relative z-10 leading-tight">{opt.label}</h3>
                             {/* Hover glow effect */}
                             <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                         </button>
@@ -190,8 +240,13 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                             <span className="material-symbols-outlined text-2xl">{hasFailed ? 'priority_high' : 'done_all'}</span>
                         </div>
                         <div>
-                            <h4 className={`text-lg font-bold font-display ${hasFailed ? 'text-error' : 'text-success'}`}>
+                            <h4 className={`text-lg font-bold font-display flex items-center gap-2 ${hasFailed ? 'text-error' : 'text-success'}`}>
                                 {hasFailed ? 'Simulation Logic Failed' : 'Consensus Reached'}
+                                {hasFailed && (
+                                    <span className="text-xs bg-error/20 text-error px-2 py-0.5 rounded border border-error/20 font-mono">
+                                        -5 XP FEE APPLIED
+                                    </span>
+                                )}
                             </h4>
                             <p className="text-sm md:text-base text-white mt-1 leading-relaxed max-w-2xl">{feedback}</p>
                         </div>

@@ -11,6 +11,7 @@ export enum View {
   PROFILE = 'PROFILE',
   RANK = 'RANK',
   STRESS_TEST = 'STRESS_TEST',
+  PATH_SUCCESS = 'PATH_SUCCESS',
 }
 
 export enum PathId {
@@ -62,6 +63,7 @@ export interface UserState {
   currentPath: PathId | null;
   streak: number;
   lastActive: string; // ISO Date String
+  lastDailyClaim?: string; // ISO Date String for Daily Bonus
   notifications: AppNotification[];
 }
 
@@ -92,6 +94,12 @@ export interface BuilderStep {
   id: string;
   title: string;
   description: string;
+  
+  // New Educational Fields
+  conceptTitle?: string;
+  conceptExplanation?: string;
+  referenceCode?: string; // Example code to show the user
+
   initialCode: string;
   language: 'bitcoin-script' | 'json' | 'ini' | 'bash';
   validationPattern?: RegExp | string; // Regex or exact match

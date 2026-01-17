@@ -123,6 +123,7 @@ export const INITIAL_USER_STATE = {
   currentPath: PathId.SOVEREIGN,
   streak: 0,
   lastActive: new Date().toISOString(),
+  lastDailyClaim: undefined,
   notifications: []
 };
 

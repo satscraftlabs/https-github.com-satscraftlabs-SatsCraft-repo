@@ -6,23 +6,39 @@ interface StressTestProps {
   onComplete: (success: boolean, score: number) => void;
   onExit: () => void;
   pathId?: PathId;
+  devMode?: boolean;
 }
+
+// Expanded Scenario Logic with correct solutions
+const SCENARIO_LOGIC: Record<string, { valid: string[], fatal: string[] }> = {
+    'CHANNEL_BREACH': { valid: ['JUSTICE_TX'], fatal: ['WAIT', 'RESTART_SERVICE'] },
+    'FEE_SPIKE': { valid: ['BUMP_FEE'], fatal: ['FORCE_CLOSE'] },
+    'DB_CORRUPTION': { valid: ['RESTART_SERVICE'], fatal: ['BUMP_FEE'] },
+    'PEER_DISCONNECT': { valid: ['WAIT', 'RESTART_SERVICE'], fatal: ['FORCE_CLOSE'] },
+    'GOSSIP_FLOOD': { valid: ['LIMIT_GOSSIP'], fatal: [] },
+    'SYBIL_ATTACK': { valid: ['BAN_PEERS'], fatal: ['WAIT'] },
+    'DUST_STORM': { valid: ['LIMIT_GOSSIP', 'BUMP_FEE'], fatal: [] },
+    'PRIVACY_LEAK': { valid: ['MIX_COINS'], fatal: ['WAIT'] },
+    'KEY_LEAK': { valid: ['SWEEP_FUNDS'], fatal: ['RESTART_SERVICE', 'WAIT'] },
+    'PHISHING': { valid: ['VERIFY_SIG'], fatal: ['SIGN_TX'] },
+    'BACKUP_ROT': { valid: ['RESTORE_SEED'], fatal: ['RESTART_SERVICE'] },
+};
 
 const SCENARIOS: Record<string, Omit<StressEvent, 'id' | 'timestamp' | 'resolved'>[]> = {
     [PathId.LIGHTNING_OPERATOR]: [
-        { type: 'CHANNEL_BREACH', title: 'HTLC Breach Attempt', symptom: 'WARN: Channel 24x789 state mismatch. Remote peer broadcasting old commitment.', rootCause: 'Malicious Peer / Watchtower Latency', severity: 'CRITICAL', decayRate: 1.5 },
-        { type: 'FEE_SPIKE', title: 'Mempool Congestion', symptom: 'ERROR: 14 HTLCs pending. Commitment tx fee below relay threshold.', rootCause: 'Fee Market Volatility', severity: 'HIGH', decayRate: 0.8 },
-        { type: 'DB_CORRUPTION', title: 'State DB Lock', symptom: 'FATAL: channel.db is locked by another process. RPC unresponsive.', rootCause: 'IO Wait / Disk Failure', severity: 'HIGH', decayRate: 1.2 },
-        { type: 'PEER_DISCONNECT', title: 'Liquidity Partition', symptom: 'INFO: 80% of inbound liquidity offline. Routing failures increasing.', rootCause: 'Peer ISP Outage', severity: 'MEDIUM', decayRate: 0.4 },
-        { type: 'GOSSIP_FLOOD', title: 'Gossip Storm', symptom: 'WARN: CPU load > 95%. Processing excessive channel updates.', rootCause: 'DDoS / Spam', severity: 'LOW', decayRate: 0.2 },
+        { type: 'CHANNEL_BREACH', title: 'HTLC Breach Attempt', symptom: 'WARN: Channel 24x789 state mismatch. Remote peer broadcasting old commitment.', rootCause: 'Malicious Peer', severity: 'CRITICAL', decayRate: 2.0 },
+        { type: 'FEE_SPIKE', title: 'Mempool Congestion', symptom: 'ERROR: 14 HTLCs pending. Commitment tx fee below relay threshold.', rootCause: 'Fee Market', severity: 'HIGH', decayRate: 0.8 },
+        { type: 'DB_CORRUPTION', title: 'State DB Lock', symptom: 'FATAL: channel.db is locked by another process. RPC unresponsive.', rootCause: 'IO Failure', severity: 'HIGH', decayRate: 1.2 },
+        { type: 'PEER_DISCONNECT', title: 'Liquidity Partition', symptom: 'INFO: 80% of inbound liquidity offline. Routing failures increasing.', rootCause: 'Network Outage', severity: 'MEDIUM', decayRate: 0.4 },
+        { type: 'GOSSIP_FLOOD', title: 'Gossip Storm', symptom: 'WARN: CPU load > 95%. Processing excessive channel updates.', rootCause: 'Spam', severity: 'LOW', decayRate: 0.2 },
     ],
     [PathId.SOVEREIGN]: [
-        { type: 'SYBIL_ATTACK', title: 'Sybil Attack Detected', symptom: 'WARN: 80% of peers returning invalid headers. Consensus divergent.', rootCause: 'Network Partition', severity: 'HIGH', decayRate: 1.2 },
+        { type: 'SYBIL_ATTACK', title: 'Sybil Attack', symptom: 'WARN: 80% of peers returning invalid headers. Consensus divergent.', rootCause: 'Network Partition', severity: 'HIGH', decayRate: 1.2 },
         { type: 'DUST_STORM', title: 'Dust Attack', symptom: 'Mempool spiked to 300MB. Minimum relay fee increased to 20 sat/vB.', rootCause: 'Spam Attack', severity: 'MEDIUM', decayRate: 0.6 },
-        { type: 'PRIVACY_LEAK', title: 'Address Reuse', symptom: 'ALERT: Change output correlated with KYC inputs. Privacy score dropping.', rootCause: 'Wallet Misconfiguration', severity: 'HIGH', decayRate: 0.9 },
+        { type: 'KEY_LEAK', title: 'Weak Entropy', symptom: 'CRITICAL: Key generation PRNG flagged as insecure.', rootCause: 'Weak Randomness', severity: 'CRITICAL', decayRate: 2.5 },
     ],
     [PathId.WALLET_MASTERY]: [
-        { type: 'KEY_LEAK', title: 'Entropy Failure', symptom: 'CRITICAL: PRNG weakness detected in signing module.', rootCause: 'Weak Randomness', severity: 'CRITICAL', decayRate: 1.8 },
+        { type: 'KEY_LEAK', title: 'Entropy Failure', symptom: 'CRITICAL: PRNG weakness detected in signing module.', rootCause: 'Weak Randomness', severity: 'CRITICAL', decayRate: 2.0 },
         { type: 'PHISHING', title: 'Clipboard Hijack', symptom: 'WARN: Destination address mismatch detected during signing.', rootCause: 'Malware', severity: 'HIGH', decayRate: 1.0 },
         { type: 'BACKUP_ROT', title: 'Bit Rot', symptom: 'ERROR: Checksum failure on mnemonic shard #2.', rootCause: 'Data Corruption', severity: 'MEDIUM', decayRate: 0.5 },
     ]
@@ -30,10 +46,10 @@ const SCENARIOS: Record<string, Omit<StressEvent, 'id' | 'timestamp' | 'resolved
 
 const DEFAULT_SCENARIOS = SCENARIOS[PathId.LIGHTNING_OPERATOR];
 
-export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, onExit, pathId = PathId.LIGHTNING_OPERATOR }) => {
+export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, onExit, pathId = PathId.LIGHTNING_OPERATOR, devMode = false }) => {
   const [phase, setPhase] = useState<'BRIEFING' | 'RUNNING' | 'FAILED' | 'SUCCESS'>('BRIEFING');
   const [uptime, setUptime] = useState(100);
-  const [timeLeft, setTimeLeft] = useState(60); // 60 seconds survival
+  const [timeLeft, setTimeLeft] = useState(60); 
   const [events, setEvents] = useState<StressEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>(['> System initialized. Monitoring daemon active...']);
@@ -43,15 +59,20 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
 
   // --- ENGINE LOGIC ---
 
-  const addLog = (msg: string) => {
-    setLogs(prev => [`> ${new Date().toLocaleTimeString().split(' ')[0]} ${msg}`, ...prev.slice(0, 19)]);
+  const addLog = (msg: string, type: 'INFO' | 'SUCCESS' | 'ERROR' = 'INFO') => {
+    setLogs(prev => [`> ${new Date().toLocaleTimeString().split(' ')[0]} [${type}] ${msg}`, ...prev.slice(0, 19)]);
   };
 
   const spawnEvent = () => {
-    // 30% chance to spawn event per tick if less than 4 active events
     const activeCount = events.filter(e => !e.resolved).length;
-    if (activeCount < 4 && Math.random() > 0.7) {
+    // Dynamic difficulty: Spawn more if user is doing well, less if struggling
+    const spawnChance = uptime > 80 ? 0.6 : 0.3;
+    
+    if (activeCount < 4 && Math.random() < spawnChance) {
       const template = scenarios[Math.floor(Math.random() * scenarios.length)];
+      // Prevent duplicates of same type
+      if (events.some(e => e.type === template.type && !e.resolved)) return;
+
       const newEvent: StressEvent = {
         ...template,
         id: Math.random().toString(36).substr(2, 9),
@@ -59,7 +80,7 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
         resolved: false,
       };
       setEvents(prev => [newEvent, ...prev]);
-      addLog(newEvent.symptom);
+      addLog(`${newEvent.title} DETECTED: ${newEvent.symptom}`, 'ERROR');
     }
   };
 
@@ -81,9 +102,6 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
     events.forEach(e => {
       if (!e.resolved) decay += e.decayRate;
     });
-    // Natural jitter
-    if (Math.random() > 0.5) decay += 0.1;
-    
     setUptime(prev => Math.max(0, prev - decay));
   };
 
@@ -104,36 +122,31 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
   // --- ACTIONS ---
 
   const handleAction = (actionType: string) => {
-    if (!selectedEventId) return;
+    if (!selectedEventId) {
+        addLog("Select a threat from the left panel to target.", 'ERROR');
+        return;
+    }
 
     const event = events.find(e => e.id === selectedEventId);
     if (!event || event.resolved) return;
 
-    // Simplified success logic for demo purposes
-    // In a full implementation, this would match actionType vs event.type
-    // Here we simulate competence by ensuring user clicks reasonable buttons
-    
-    // Always fail "WAIT" unless it's a specific low severity event
-    if (actionType === 'WAIT' && event.severity !== 'LOW') {
-        addLog(`FAILURE: Waiting is not an option for ${event.type}`);
-        setUptime(prev => Math.max(0, prev - 10));
-        return;
-    }
+    const logic = SCENARIO_LOGIC[event.type];
+    const isCorrect = logic?.valid.includes(actionType);
+    const isFatal = logic?.fatal.includes(actionType);
 
-    const success = Math.random() > 0.2; // 80% success rate for correct actions
-
-    if (success) {
+    if (isCorrect) {
       setEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, resolved: true } : e));
-      addLog(`SUCCESS: Threat mitigated.`);
-      setUptime(prev => Math.min(100, prev + 5)); 
+      addLog(`MITIGATED: ${event.title} resolved via ${actionType}.`, 'SUCCESS');
+      setUptime(prev => Math.min(100, prev + 10)); 
       setSelectedEventId(null);
+    } else if (isFatal) {
+      addLog(`CRITICAL ERROR: ${actionType} exacerbated ${event.title}.`, 'ERROR');
+      setUptime(prev => Math.max(0, prev - 20)); // Heavy penalty
     } else {
-      addLog(`FAILURE: Action failed execution. Retry.`);
-      setUptime(prev => Math.max(0, prev - 5)); 
+      addLog(`INEFFECTIVE: ${actionType} has no effect on ${event.title}.`, 'INFO');
+      setUptime(prev => Math.max(0, prev - 5)); // Minor penalty
     }
   };
-
-  // --- RENDER HELPERS ---
 
   const getSeverityColor = (sev: StressEventSeverity) => {
     switch(sev) {
@@ -145,6 +158,28 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
   };
 
   const activeEvent = events.find(e => e.id === selectedEventId);
+
+  // --- COMMAND PALETTE ---
+  const COMMANDS = {
+      'Network': [
+          { id: 'RESTART_SERVICE', label: 'Restart Daemon' },
+          { id: 'LIMIT_GOSSIP', label: 'Rate Limit Peers' },
+          { id: 'BAN_PEERS', label: 'Ban IP Range' },
+          { id: 'WAIT', label: 'Wait / Monitor' },
+      ],
+      'On-Chain': [
+          { id: 'BUMP_FEE', label: 'CPFP (Bump Fee)' },
+          { id: 'SWEEP_FUNDS', label: 'Sweep to Cold' },
+          { id: 'MIX_COINS', label: 'CoinJoin' },
+          { id: 'RESTORE_SEED', label: 'Restore Backup' },
+      ],
+      'Lightning': [
+          { id: 'FORCE_CLOSE', label: 'Force Close' },
+          { id: 'JUSTICE_TX', label: 'Broadcast Justice' },
+          { id: 'VERIFY_SIG', label: 'Verify Signature' },
+          { id: 'SIGN_TX', label: 'Sign & Broadcast' },
+      ]
+  };
 
   // --- VIEWS ---
 
@@ -160,10 +195,10 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
                    <strong>{pathId.replace('_', ' ')}: FINAL EXAM</strong>
                    <br/><br/>
                    This is not a drill. You are about to enter a high-stress simulation.
-                   <br/><br/>
-                   Maintain <strong>System Uptime > 0%</strong> for 60 seconds.
                    <br/>
-                   Cascading failures are enabled. No hints.
+                   Identify the root cause of each anomaly and apply the <strong>correct protocol</strong>.
+                   <br/><br/>
+                   <span className="text-sm bg-black/30 px-2 py-1 rounded">Hint: Guessing is fatal. "Restarting" doesn't fix a hack.</span>
                </p>
                <div className="flex gap-4 justify-center">
                    <Button variant="ghost" onClick={onExit}>Retreat</Button>
@@ -181,17 +216,21 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
       return (
         <div className="flex flex-col items-center justify-center h-full bg-black text-center p-8">
             <h1 className="text-6xl font-bold text-error font-mono mb-4">SYSTEM OFFLINE</h1>
-            <p className="text-text-muted mb-8">Uptime reached 0%. Competence unverified.</p>
+            <p className="text-text-muted mb-8">Uptime reached 0%. Slashing Penalty Applied.</p>
             <div className="bg-surface-dark p-6 rounded-xl border border-white/10 w-full max-w-md text-left font-mono text-xs mb-8">
                  {events.filter(e => !e.resolved).map(e => (
                      <div key={e.id} className="text-error mb-2">
-                         [FATAL] Unresolved: {e.title} ({e.rootCause})
+                         [FATAL] Unresolved: {e.title}
                      </div>
                  ))}
+                 <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center text-error font-bold text-sm">
+                     <span>FEE PENALTY:</span>
+                     <span>-100 XP</span>
+                 </div>
             </div>
             <div className="flex gap-4">
-                 <Button variant="secondary" onClick={onExit}>Exit</Button>
-                 <Button variant="primary" onClick={() => { setUptime(100); setTimeLeft(60); setEvents([]); setPhase('BRIEFING'); }}>Retry Simulation</Button>
+                 <Button variant="secondary" onClick={() => onComplete(false, 0)}>Accept Penalty</Button>
+                 <Button variant="danger" onClick={() => { setUptime(100); setTimeLeft(60); setEvents([]); setPhase('BRIEFING'); setLogs([]); }}>Re-Attempt (-10 XP)</Button>
             </div>
         </div>
       );
@@ -221,10 +260,31 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
   }
 
   return (
-    <div className="flex flex-col h-full bg-black text-white font-mono overflow-hidden">
+    <div className="flex flex-col h-full bg-black text-white font-mono overflow-hidden relative">
       
+      {/* --- DEV MODE OVERLAY --- */}
+      {devMode && (
+          <div className="absolute top-16 right-0 p-4 bg-purple-900/40 border-l border-b border-purple-500/30 z-50 max-w-xs pointer-events-none backdrop-blur-sm">
+              <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-1">
+                  DEV: Simulation State
+              </div>
+              <div className="space-y-1 text-[9px] font-mono text-purple-200">
+                  <div className="flex justify-between"><span>Decay Rate:</span><span>{events.filter(e=>!e.resolved).reduce((a,b)=>a+b.decayRate, 0).toFixed(2)}/sec</span></div>
+                  <div className="flex justify-between"><span>Tick Rate:</span><span>1000ms</span></div>
+                  <div className="flex justify-between"><span>Entropy:</span><span>{Math.random().toFixed(4)}</span></div>
+                  <div className="mt-2 text-purple-400 font-bold">Active Event Vector:</div>
+                  {events.filter(e => !e.resolved).map(e => (
+                      <div key={e.id} className="pl-2 border-l border-purple-500/50">
+                          ID: {e.id} | TYPE: {e.type}<br/>
+                          SOL: {SCENARIO_LOGIC[e.type]?.valid[0]}
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
+
       {/* Top Bar: Metrics */}
-      <div className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#050505]">
+      <div className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#050505] shrink-0 relative z-10">
           <div className="flex items-center gap-4">
               <span className="text-error font-bold uppercase tracking-widest animate-pulse">Live Incident</span>
               <div className="h-6 w-px bg-white/10"></div>
@@ -245,7 +305,7 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
       <div className="flex-1 flex overflow-hidden">
           
           {/* Left Panel: Active Threats */}
-          <div className="w-1/3 border-r border-white/10 bg-[#0A0A0A] flex flex-col">
+          <div className="w-80 border-r border-white/10 bg-[#0A0A0A] flex flex-col shrink-0">
               <div className="p-3 border-b border-white/10 bg-white/5 text-xs font-bold uppercase tracking-wider text-text-muted">
                   Active Signals ({events.filter(e => !e.resolved).length})
               </div>
@@ -261,37 +321,37 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
                         onClick={() => setSelectedEventId(e.id)}
                         className={`p-4 rounded-lg border cursor-pointer transition-all ${
                             selectedEventId === e.id 
-                                ? 'bg-white/10 border-white/30' 
+                                ? 'bg-white/10 border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.1)]' 
                                 : 'bg-black border-white/10 hover:border-white/20'
                         }`}
                       >
-                          <div className="flex justify-between items-start mb-1">
+                          <div className="flex justify-between items-start mb-2">
                               <span className={`text-[10px] font-bold border px-1.5 rounded ${getSeverityColor(e.severity)} border-current`}>
                                   {e.severity}
                               </span>
                               <span className="text-[10px] text-text-muted">{e.timestamp}</span>
                           </div>
                           <h4 className="font-bold text-sm mb-1">{e.title}</h4>
-                          <p className="text-[10px] text-text-muted leading-tight">{e.symptom}</p>
+                          <p className="text-[10px] text-text-muted leading-relaxed opacity-80">{e.symptom}</p>
                       </div>
                   ))}
               </div>
           </div>
 
-          {/* Center Panel: Visualization */}
-          <div className="flex-1 flex flex-col relative bg-black">
+          {/* Center Panel: Visualization & Logs */}
+          <div className="flex-1 flex flex-col relative bg-black min-w-0">
               {/* Fake Network Graph Background */}
               <div className="absolute inset-0 opacity-20 pointer-events-none">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-64 border border-white/20 rounded-full flex items-center justify-center">
                       <div className="size-48 border border-white/20 rounded-full flex items-center justify-center">
-                          <div className="size-32 border border-white/20 rounded-full"></div>
+                          <div className="size-32 border border-white/20 rounded-full animate-pulse"></div>
                       </div>
                   </div>
               </div>
 
               {/* Central Status Node */}
-              <div className="flex-1 flex items-center justify-center z-10">
-                   <div className={`size-32 rounded-full border-4 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 ${
+              <div className="flex-1 flex flex-col items-center justify-center z-10 p-8">
+                   <div className={`size-32 rounded-full border-4 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 mb-8 ${
                        activeEvent ? 'border-red-500 bg-red-900/20 shadow-red-900/40' : 'border-blue-500 bg-blue-900/10'
                    }`}>
                        <span className="material-symbols-outlined text-4xl mb-1 text-white">
@@ -301,12 +361,19 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
                            {activeEvent ? 'ALERT' : 'ONLINE'}
                        </span>
                    </div>
+                   
+                   {activeEvent && (
+                       <div className="bg-black/80 backdrop-blur border border-red-500/30 p-4 rounded-xl max-w-lg text-center animate-in slide-in-from-bottom-4">
+                           <h3 className="text-red-400 font-bold mb-1">TARGET LOCKED: {activeEvent.title}</h3>
+                           <p className="text-xs text-text-muted">Identify the root cause ({activeEvent.rootCause}) and select the appropriate counter-measure below.</p>
+                       </div>
+                   )}
               </div>
 
               {/* Logs */}
-              <div className="h-1/3 border-t border-white/10 bg-[#050505] p-4 font-mono text-[10px] overflow-y-auto">
+              <div className="h-48 border-t border-white/10 bg-[#050505] p-4 font-mono text-[10px] overflow-y-auto shrink-0">
                   {logs.map((log, i) => (
-                      <div key={i} className={`mb-1 ${log.includes('FATAL') || log.includes('ERROR') ? 'text-error' : log.includes('WARN') ? 'text-warning' : log.includes('SUCCESS') ? 'text-success' : 'text-text-muted'}`}>
+                      <div key={i} className={`mb-1 ${log.includes('ERROR') ? 'text-error' : log.includes('WARN') ? 'text-warning' : log.includes('SUCCESS') ? 'text-success' : 'text-text-muted'}`}>
                           {log}
                       </div>
                   ))}
@@ -315,32 +382,59 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
 
       </div>
 
-      {/* Bottom Panel: Actions */}
-      <div className="h-20 bg-[#0D0F12] border-t border-white/10 p-2 flex items-center gap-2 overflow-x-auto">
-          {!activeEvent ? (
-              <div className="w-full text-center text-xs text-text-muted uppercase tracking-wider">
-                  Select an active signal to view response protocols
+      {/* Bottom Panel: Command Center */}
+      <div className="h-48 bg-[#0D0F12] border-t border-white/10 p-4 shrink-0">
+          <div className="grid grid-cols-3 gap-4 h-full">
+              
+              {/* Category 1: Network */}
+              <div className="bg-surface-dark border border-white/5 rounded-xl p-2 flex flex-col gap-1">
+                  <div className="text-[10px] font-bold text-text-muted uppercase px-2 mb-1">Network Layer</div>
+                  <div className="grid grid-cols-2 gap-2 flex-1">
+                      {COMMANDS.Network.map(cmd => (
+                          <button
+                            key={cmd.id}
+                            onClick={() => handleAction(cmd.id)}
+                            className="bg-black hover:bg-white/5 border border-white/10 rounded flex items-center justify-center text-xs font-bold transition-colors text-blue-200"
+                          >
+                              {cmd.label}
+                          </button>
+                      ))}
+                  </div>
               </div>
-          ) : (
-             <>
-                <div className="h-full px-4 flex items-center justify-center bg-white/5 border-r border-white/5 mr-2 shrink-0">
-                    <span className="text-xs font-bold text-white">{activeEvent.title}</span>
-                </div>
-                {/* Generic Action Buttons that map to different successes based on logic */}
-                <Button size="sm" variant="secondary" onClick={() => handleAction('WAIT')}>Wait / Monitor</Button>
-                <Button size="sm" variant="secondary" onClick={() => handleAction('RESTART_SERVICE')}>Restart Svc</Button>
-                
-                <div className="w-px h-8 bg-white/10 mx-2"></div>
 
-                <Button size="sm" variant="primary" onClick={() => handleAction('BUMP_FEE')}>Bump Fee (CPFP)</Button>
-                <Button size="sm" variant="primary" onClick={() => handleAction('LIMIT_GOSSIP')}>Filter Spam</Button>
-                
-                <div className="w-px h-8 bg-white/10 mx-2"></div>
-                
-                <Button size="sm" variant="danger" onClick={() => handleAction('FORCE_CLOSE')}>Force Close</Button>
-                <Button size="sm" variant="danger" onClick={() => handleAction('JUSTICE_TX')}>Broadcast Justice</Button>
-             </>
-          )}
+              {/* Category 2: On-Chain */}
+              <div className="bg-surface-dark border border-white/5 rounded-xl p-2 flex flex-col gap-1">
+                  <div className="text-[10px] font-bold text-text-muted uppercase px-2 mb-1">Chain / Wallet</div>
+                  <div className="grid grid-cols-2 gap-2 flex-1">
+                      {COMMANDS['On-Chain'].map(cmd => (
+                          <button
+                            key={cmd.id}
+                            onClick={() => handleAction(cmd.id)}
+                            className="bg-black hover:bg-white/5 border border-white/10 rounded flex items-center justify-center text-xs font-bold transition-colors text-orange-200"
+                          >
+                              {cmd.label}
+                          </button>
+                      ))}
+                  </div>
+              </div>
+
+              {/* Category 3: Lightning */}
+              <div className="bg-surface-dark border border-white/5 rounded-xl p-2 flex flex-col gap-1">
+                  <div className="text-[10px] font-bold text-text-muted uppercase px-2 mb-1">Lightning / Channel</div>
+                  <div className="grid grid-cols-2 gap-2 flex-1">
+                      {COMMANDS.Lightning.map(cmd => (
+                          <button
+                            key={cmd.id}
+                            onClick={() => handleAction(cmd.id)}
+                            className="bg-black hover:bg-white/5 border border-white/10 rounded flex items-center justify-center text-xs font-bold transition-colors text-purple-200"
+                          >
+                              {cmd.label}
+                          </button>
+                      ))}
+                  </div>
+              </div>
+
+          </div>
       </div>
 
     </div>

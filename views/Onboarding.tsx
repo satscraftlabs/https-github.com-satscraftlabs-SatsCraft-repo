@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { PATHS } from '../constants';
 import { Button } from '../components/ui/Button';
-import { View, PathId } from '../types';
+import { PathId } from '../types';
+import { usePresence } from '../hooks/usePresence';
 
 interface OnboardingProps {
   onComplete: (selectedPath: PathId) => void;
@@ -46,6 +48,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedPath, setSelectedPath] = useState<PathId | null>(null);
   const [showPathSelection, setShowPathSelection] = useState(false);
+  
+  // Real-time Presence
+  // We pass null initially to just listen without broadcasting presence until they pick a path
+  const { activeCounts, isConnected } = usePresence(null);
 
   const handleNext = () => {
     if (currentSlide === SLIDES.length - 1) {
@@ -119,7 +125,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="px-6 md:px-8 pt-8 pb-6 border-b border-white/5 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
                 <h2 className="text-3xl font-bold text-text-main mb-2 font-display">Choose Your Path</h2>
-                <p className="text-text-muted max-w-xl">Select a specialized track to begin your simulation sequence. All paths lead to sovereign competence.</p>
+                <div className="flex items-center gap-2">
+                    <p className="text-text-muted max-w-xl">Select a specialized track to begin your simulation sequence.</p>
+                    {isConnected && (
+                        <div className="bg-success/10 text-success text-[10px] font-bold px-2 py-0.5 rounded border border-success/20 animate-pulse flex items-center gap-1">
+                            <span className="size-1.5 bg-success rounded-full"></span>
+                            LIVE
+                        </div>
+                    )}
+                </div>
             </div>
             {/* Desktop Action Button */}
             <div className="hidden md:block">
@@ -131,78 +145,87 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   icon="arrow_forward"
                   className="min-w-[240px] shadow-lg shadow-primary/20"
                 >
-                  Initialize Simulation
+                  Confirm Selection
                 </Button>
             </div>
           </div>
-          
-          {/* Grid Content */}
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-24 md:pb-0">
-                {PATHS.map((path) => (
-                  <div 
-                    key={path.id}
-                    onClick={() => setSelectedPath(path.id)}
-                    className={`group relative cursor-pointer rounded-2xl border p-5 transition-all duration-200 flex flex-col h-full
-                      ${selectedPath === path.id 
-                        ? 'bg-surface-dark border-primary ring-1 ring-primary shadow-[0_0_30px_-10px_rgba(247,147,26,0.3)] scale-[1.02] z-10' 
-                        : 'bg-surface-dark/40 border-white/5 hover:border-primary/50 hover:bg-surface-highlight'
-                      }`}
-                  >
-                    {selectedPath === path.id && (
-                      <div className="absolute right-3 top-3 text-primary animate-in zoom-in duration-300">
-                        <span className="material-symbols-outlined fill-1">check_circle</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-start gap-4 mb-4">
-                        <div className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl flex items-center justify-center transition-colors
-                            ${selectedPath === path.id ? 'bg-primary/20 text-primary' : 'bg-white/5 text-text-main group-hover:text-primary'}`}>
-                            <span className="material-symbols-outlined text-[28px]">{path.icon}</span>
-                        </div>
-                    </div>
 
-                    <div className="flex-1">
-                        <h3 className={`text-lg font-bold mb-2 font-display ${selectedPath === path.id ? 'text-primary' : 'text-text-main'}`}>
-                        {path.title}
-                        </h3>
-                        <p className="text-sm leading-relaxed text-text-muted mb-4">
-                        {path.description}
-                        </p>
-                    </div>
-
-                    <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${selectedPath === path.id ? 'bg-primary' : 'bg-text-muted'}`}></span>
-                                <span className={`relative inline-flex rounded-full h-2 w-2 ${selectedPath === path.id ? 'bg-primary' : 'bg-text-muted'}`}></span>
+          {/* Grid */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24 md:pb-0">
+              {PATHS.map((path) => {
+                 const activeUsers = activeCounts[path.id] || 0;
+                 return (
+                    <button
+                        key={path.id}
+                        onClick={() => setSelectedPath(path.id)}
+                        className={`group relative flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] ${
+                            selectedPath === path.id 
+                            ? 'bg-surface-highlight border-primary shadow-[0_0_30px_-10px_rgba(247,147,26,0.4)]' 
+                            : 'bg-surface-dark border-white/5 hover:border-white/20 hover:bg-surface-highlight'
+                        }`}
+                    >
+                        {/* Active User Badge */}
+                        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded-full border border-white/5">
+                            <span className={`size-1.5 rounded-full bg-success ${activeUsers > 0 ? 'animate-pulse' : 'opacity-80'}`}></span>
+                            <span className="text-[10px] font-mono font-bold text-text-muted">
+                                {activeUsers > 0 ? `${activeUsers} Active` : 'Online'}
                             </span>
-                            <span className={`text-[10px] font-bold tracking-wide ${selectedPath === path.id ? 'text-primary' : 'text-text-muted'}`}>{path.activeLearners} ACTIVE</span>
                         </div>
-                        <span className="text-[10px] font-mono text-text-muted bg-white/5 px-2 py-1 rounded">{path.modules.length} MODS</span>
-                    </div>
-                  </div>
-                ))}
+
+                        <div className={`size-14 rounded-xl flex items-center justify-center mb-6 transition-colors ${
+                            selectedPath === path.id 
+                            ? 'bg-primary text-background-dark' 
+                            : 'bg-white/5 text-text-muted group-hover:text-white'
+                        }`}>
+                            <span className="material-symbols-outlined text-3xl">{path.icon}</span>
+                        </div>
+                        
+                        <h3 className={`text-xl font-bold mb-2 font-display ${selectedPath === path.id ? 'text-primary' : 'text-white'}`}>
+                            {path.title}
+                        </h3>
+                        
+                        <p className="text-sm text-text-muted leading-relaxed mb-6 flex-1">
+                            {path.description}
+                        </p>
+                        
+                        <div className="flex items-center justify-between pt-4 border-t border-white/5 w-full">
+                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                                {path.modules.length} Modules
+                            </span>
+                            {selectedPath === path.id ? (
+                                <span className="material-symbols-outlined text-primary">check_circle</span>
+                            ) : (
+                                <span className="material-symbols-outlined text-white/20 group-hover:text-white transition-colors">arrow_forward</span>
+                            )}
+                        </div>
+                    </button>
+                 );
+              })}
             </div>
           </div>
-
-          {/* Mobile Action Button */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent z-20">
-            <Button 
-              variant="primary" 
-              fullWidth 
-              size="lg" 
-              disabled={!selectedPath}
-              onClick={() => selectedPath && onComplete(selectedPath)}
-              icon="arrow_forward"
-              className="shadow-xl"
-            >
-              Initialize Simulation
-            </Button>
+          
+          {/* Mobile Floating Action Button */}
+          <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+             <Button 
+                variant="primary" 
+                size="lg" 
+                fullWidth
+                disabled={!selectedPath}
+                onClick={() => selectedPath && onComplete(selectedPath)}
+                icon="arrow_forward"
+                className="shadow-xl shadow-black/50"
+              >
+                Confirm Selection
+              </Button>
           </div>
       </div>
     </div>
   );
 
-  return showPathSelection ? renderPathSelection() : renderSlides();
+  return (
+    <div className="h-screen w-full bg-background-dark text-text-main font-body selection:bg-primary/30">
+      {showPathSelection ? renderPathSelection() : renderSlides()}
+    </div>
+  );
 };

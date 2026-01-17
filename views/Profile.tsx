@@ -1,15 +1,61 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '../components/ui/Button';
 import { UserState } from '../types';
 import { AuditReportModal } from '../components/AuditReportModal';
+import { PATHS } from '../constants';
 
 interface ProfileProps {
   user: UserState;
   onLogout: () => void;
+  devMode: boolean;
+  setDevMode: (enabled: boolean) => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
-  const [showAuditModal, setShowAuditModal] = useState(false);
+export const Profile: React.FC<ProfileProps> = ({ user, onLogout, devMode, setDevMode }) => {
+  const [showAuditModal, setShowAuditModal] = React.useState(false);
+
+  // Generate Deterministic Activity Data based on User State
+  const activityData = useMemo(() => {
+    const weeks = [];
+    const totalWeeks = 52;
+    const daysPerWeek = 7;
+    const yearActivity = new Array(totalWeeks * daysPerWeek).fill(0);
+    
+    user.completedModules.forEach(modId => {
+        let hash = 0;
+        for (let i = 0; i < modId.length; i++) {
+            hash = ((hash << 5) - hash) + modId.charCodeAt(i);
+            hash |= 0;
+        }
+        const dayIndex = Math.abs(hash) % (350); 
+        yearActivity[dayIndex] = Math.min(4, yearActivity[dayIndex] + 2);
+    });
+
+    const todayIndex = (totalWeeks * daysPerWeek) - 1;
+    for (let i = 0; i < user.streak; i++) {
+        const idx = todayIndex - i;
+        if (idx >= 0) {
+            yearActivity[idx] = 4; // Max intensity for streak days
+        }
+    }
+
+    for (let w = 0; w < totalWeeks; w++) {
+        const weekDays = yearActivity.slice(w * 7, (w * 7) + 7);
+        weeks.push(weekDays);
+    }
+    
+    return weeks;
+  }, [user.completedModules, user.streak]);
+
+  const getColorForLevel = (level: number) => {
+      switch(level) {
+          case 1: return 'bg-primary/20';
+          case 2: return 'bg-primary/40';
+          case 3: return 'bg-primary/70';
+          case 4: return 'bg-primary shadow-[0_0_8px_rgba(247,147,26,0.6)]';
+          default: return 'bg-white/5';
+      }
+  };
 
   return (
     <div className="flex flex-col h-full bg-background-dark overflow-y-auto custom-scrollbar animate-in fade-in duration-500 p-6 md:p-8">
@@ -127,8 +173,48 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
                 <p className="text-[10px] text-text-muted uppercase font-bold">Current Rank</p>
             </div>
         </div>
+
+        {/* Activity Graph Section (Derived from Real User Data) */}
+        <div className="bg-surface-dark rounded-2xl border border-white/5 overflow-hidden p-6">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span className="material-symbols-outlined text-success text-lg">calendar_month</span>
+                    Protocol Activity
+                </h2>
+                <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                    <span>Less</span>
+                    <div className="size-2 bg-white/5 rounded-sm"></div>
+                    <div className="size-2 bg-primary/20 rounded-sm"></div>
+                    <div className="size-2 bg-primary/40 rounded-sm"></div>
+                    <div className="size-2 bg-primary/70 rounded-sm"></div>
+                    <div className="size-2 bg-primary rounded-sm"></div>
+                    <span>More</span>
+                </div>
+            </div>
+            
+            {/* The Graph */}
+            <div className="w-full overflow-x-auto custom-scrollbar pb-2">
+                <div className="flex gap-1 min-w-max">
+                    {activityData.map((week, weekIdx) => (
+                        <div key={weekIdx} className="flex flex-col gap-1">
+                            {week.map((dayLevel, dayIdx) => (
+                                <div 
+                                    key={dayIdx} 
+                                    className={`size-2.5 md:size-3 rounded-sm transition-all hover:scale-125 ${getColorForLevel(dayLevel)}`}
+                                    title={`Activity Level: ${dayLevel}`}
+                                ></div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="mt-2 text-[10px] text-text-muted font-mono flex justify-between">
+                <span>1 Year Ago</span>
+                <span>Today</span>
+            </div>
+        </div>
         
-        {/* App Settings (Mock) */}
+        {/* App Settings */}
         <div className="bg-surface-dark rounded-2xl border border-white/5 overflow-hidden">
              <div className="p-6 border-b border-white/5">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -147,14 +233,19 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
                     </div>
                 </div>
                 <div className="w-full h-px bg-white/5"></div>
-                 <div className="flex items-center justify-between opacity-50">
+                
+                {/* Developer Mode Button (Active) */}
+                 <div className="flex items-center justify-between">
                     <div>
-                        <h4 className="text-sm font-bold text-white">Developer Mode</h4>
+                        <h4 className={`text-sm font-bold transition-colors ${devMode ? 'text-primary' : 'text-white'}`}>Developer Mode</h4>
                         <p className="text-xs text-text-muted">Show raw protocol logs in labs</p>
                     </div>
-                    <div className="w-10 h-6 bg-white/10 rounded-full relative cursor-pointer">
-                        <div className="absolute left-1 top-1 size-4 bg-text-muted rounded-full"></div>
-                    </div>
+                    <button 
+                        onClick={() => setDevMode(!devMode)}
+                        className={`w-10 h-6 rounded-full relative transition-colors duration-200 ${devMode ? 'bg-primary' : 'bg-white/10'}`}
+                    >
+                        <div className={`absolute top-1 size-4 bg-white rounded-full transition-all duration-200 ${devMode ? 'left-5' : 'left-1'}`}></div>
+                    </button>
                 </div>
             </div>
         </div>
