@@ -22,6 +22,8 @@ const SCENARIO_LOGIC: Record<string, { valid: string[], fatal: string[] }> = {
     'KEY_LEAK': { valid: ['SWEEP_FUNDS'], fatal: ['RESTART_SERVICE', 'WAIT'] },
     'PHISHING': { valid: ['VERIFY_SIG'], fatal: ['SIGN_TX'] },
     'BACKUP_ROT': { valid: ['RESTORE_SEED'], fatal: ['RESTART_SERVICE'] },
+    'SCALING_CRISIS': { valid: ['BATCH_TX'], fatal: ['RESTART_SERVICE', 'FORCE_CLOSE'] },
+    'MEMPOOL_CONGESTION': { valid: ['BUMP_FEE'], fatal: ['FORCE_CLOSE'] }
 };
 
 const SCENARIOS: Record<string, Omit<StressEvent, 'id' | 'timestamp' | 'resolved'>[]> = {
@@ -30,9 +32,10 @@ const SCENARIOS: Record<string, Omit<StressEvent, 'id' | 'timestamp' | 'resolved
         { type: 'FEE_SPIKE', title: 'Mempool Congestion', symptom: 'ERROR: 14 HTLCs pending. Commitment tx fee below relay threshold.', rootCause: 'Fee Market', severity: 'HIGH', decayRate: 0.8 },
         { type: 'DB_CORRUPTION', title: 'State DB Lock', symptom: 'FATAL: channel.db is locked by another process. RPC unresponsive.', rootCause: 'IO Failure', severity: 'HIGH', decayRate: 1.2 },
         { type: 'PEER_DISCONNECT', title: 'Liquidity Partition', symptom: 'INFO: 80% of inbound liquidity offline. Routing failures increasing.', rootCause: 'Network Outage', severity: 'MEDIUM', decayRate: 0.4 },
-        { type: 'GOSSIP_FLOOD', title: 'Gossip Storm', symptom: 'WARN: CPU load > 95%. Processing excessive channel updates.', rootCause: 'Spam', severity: 'LOW', decayRate: 0.2 },
+        { type: 'GOSSIP_FLOOD', title: 'Gossip Storm', symptom: 'WARN: CPU load > 95%. Processing 5000 channel updates/sec.', rootCause: 'Network Scaling', severity: 'LOW', decayRate: 0.5 },
     ],
     [PathId.SOVEREIGN]: [
+        { type: 'SCALING_CRISIS', title: 'Global Congestion', symptom: 'CRITICAL: Mempool > 500MB. Fees > 300 sat/vB. 2.1M Active Peers detected.', rootCause: 'User Scaling', severity: 'HIGH', decayRate: 1.5 },
         { type: 'SYBIL_ATTACK', title: 'Sybil Attack', symptom: 'WARN: 80% of peers returning invalid headers. Consensus divergent.', rootCause: 'Network Partition', severity: 'HIGH', decayRate: 1.2 },
         { type: 'DUST_STORM', title: 'Dust Attack', symptom: 'Mempool spiked to 300MB. Minimum relay fee increased to 20 sat/vB.', rootCause: 'Spam Attack', severity: 'MEDIUM', decayRate: 0.6 },
         { type: 'KEY_LEAK', title: 'Weak Entropy', symptom: 'CRITICAL: Key generation PRNG flagged as insecure.', rootCause: 'Weak Randomness', severity: 'CRITICAL', decayRate: 2.5 },
@@ -171,7 +174,7 @@ export const AdversarialStressTest: React.FC<StressTestProps> = ({ onComplete, o
           { id: 'BUMP_FEE', label: 'CPFP (Bump Fee)' },
           { id: 'SWEEP_FUNDS', label: 'Sweep to Cold' },
           { id: 'MIX_COINS', label: 'CoinJoin' },
-          { id: 'RESTORE_SEED', label: 'Restore Backup' },
+          { id: 'BATCH_TX', label: 'Batch Transaction' }, 
       ],
       'Lightning': [
           { id: 'FORCE_CLOSE', label: 'Force Close' },

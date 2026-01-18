@@ -5,6 +5,7 @@ import { Onboarding } from './views/Onboarding';
 import { Dashboard } from './views/Dashboard';
 import { Labs } from './views/Labs';
 import { Rank } from './views/Rank';
+import { Resources } from './views/Resources';
 import { UTXOLab } from './simulations/UTXOLab';
 import { LightningSandbox } from './simulations/LightningSandbox';
 import { PhishingDefense } from './simulations/PhishingDefense';
@@ -18,9 +19,10 @@ import { PathSuccess } from './views/PathSuccess';
 import { Profile } from './views/Profile';
 import { DailyBonusModal } from './components/DailyBonusModal';
 import { NotificationModal } from './components/NotificationModal';
+import { AITutor } from './components/AITutor';
 import { View, PathId, UserState } from './types';
 import { INITIAL_USER_STATE, PATHS } from './constants';
-import { MODULE_CONTENT } from './data/moduleContent';
+import { MODULE_CONTENT, TAPROOT_UPGRADE_PATCH } from './data/moduleContent';
 import { BUILDER_CONTENT } from './data/builderContent';
 import { loginWithNostr, loginWithLightning, saveUserState } from './utils/auth';
 
@@ -30,6 +32,10 @@ const App: React.FC = () => {
   const [activeSimulation, setActiveSimulation] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
   
+  // Dynamic Content State ( Simulating Network Consensus )
+  const [activeContent, setActiveContent] = useState(MODULE_CONTENT);
+  const [appVersion, setAppVersion] = useState("v0.9.3 (SegWit)");
+
   // Daily Bonus State
   const [showDailyBonus, setShowDailyBonus] = useState(false);
 
@@ -130,6 +136,27 @@ const App: React.FC = () => {
     }
   };
 
+  // --- CONTENT UPGRADE LOGIC ---
+  const handleSystemUpgrade = () => {
+      // Merge patch
+      setActiveContent(prev => ({
+          ...prev,
+          ...TAPROOT_UPGRADE_PATCH
+      }));
+      setAppVersion("v1.0.0 (Taproot)");
+      
+      // Notify user
+      setUserState(prev => ({
+          ...prev,
+          notifications: [...prev.notifications, {
+              id: Date.now().toString(),
+              type: 'INFO',
+              title: 'Consensus Upgrade Activated',
+              message: 'Node updated to v1.0.0. Taproot features unlocked in Script module.',
+          }]
+      }));
+  };
+
   // --- PENALTY LOGIC ---
   const handleMistake = (amount: number = 5) => {
       setUserState(prev => ({
@@ -166,6 +193,7 @@ const App: React.FC = () => {
         if (mod) xpGain = mod.xp;
     }
     // Check custom labs
+    if (activeSimulation === 'LAB_UTXO') xpGain = 150;
     if (activeSimulation === 'LAB_P2P') xpGain = 350;
     if (activeSimulation === '6.2') xpGain = 300;
 
@@ -230,7 +258,7 @@ const App: React.FC = () => {
     if (activeSimulation === '6.2') return <EntropyLab onComplete={handleSimulationComplete} devMode={devMode} />;
     if (activeSimulation === 'LAB_P2P') return <P2PTradingDesk onComplete={handleSimulationComplete} devMode={devMode} />;
 
-    const content = MODULE_CONTENT[activeSimulation];
+    const content = activeContent[activeSimulation];
     if (content) {
         return (
             <StandardSimulation 
@@ -283,6 +311,10 @@ const App: React.FC = () => {
         <Labs onSelectModule={handleModuleSelect} userState={userState} />
       )}
 
+      {view === View.RESOURCES && (
+        <Resources />
+      )}
+
       {view === View.RANK && (
         <Rank currentUser={userState} />
       )}
@@ -325,7 +357,14 @@ const App: React.FC = () => {
       )}
 
       {view === View.PROFILE && (
-        <Profile user={userState} onLogout={handleLogout} devMode={devMode} setDevMode={setDevMode} />
+        <Profile 
+            user={userState} 
+            onLogout={handleLogout} 
+            devMode={devMode} 
+            setDevMode={setDevMode}
+            appVersion={appVersion}
+            onUpgrade={handleSystemUpgrade}
+        />
       )}
 
       {showDailyBonus && (
@@ -342,6 +381,12 @@ const App: React.FC = () => {
             onClose={handleCloseNotification} 
           />
       )}
+
+      {/* AI Tutor is always available except on Login */}
+      {view !== View.LOGIN && (
+          <AITutor user={userState} />
+      )}
+
     </Layout>
   );
 };

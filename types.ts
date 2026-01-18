@@ -7,6 +7,7 @@ export enum View {
   SIMULATION = 'SIMULATION',
   BUILDER = 'BUILDER', 
   LABS = 'LABS',
+  RESOURCES = 'RESOURCES', // New Tab
   AUDIT = 'AUDIT',
   PROFILE = 'PROFILE',
   RANK = 'RANK',

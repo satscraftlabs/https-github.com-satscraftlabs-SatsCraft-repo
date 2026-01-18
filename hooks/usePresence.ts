@@ -12,6 +12,9 @@ export interface PeerData {
     isOnline: boolean;
 }
 
+// 2M User Protection: Cap client-side state
+const MAX_DISPLAY_PEERS = 500; 
+
 export const usePresence = (user: UserState | null) => {
     const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
     const [peers, setPeers] = useState<PeerData[]>([]);
@@ -35,6 +38,12 @@ export const usePresence = (user: UserState | null) => {
             const nick = getTag('nick') || 'Anon';
 
             if (path) {
+                // Throttling: If map is too big, don't add new peers unless they have high XP (Priority)
+                if (peersRef.current.size >= MAX_DISPLAY_PEERS && !peersRef.current.has(event.pubkey)) {
+                    // Simple logic: Only admit new high-value peers if full
+                    if (xp < 5000) return; 
+                }
+
                 peersRef.current.set(event.pubkey, {
                     pubkey: event.pubkey,
                     name: nick,
@@ -71,15 +80,22 @@ export const usePresence = (user: UserState | null) => {
             const newCounts: Record<string, number> = {};
             const activePeers: PeerData[] = [];
             
-            for (const data of peersRef.current.values()) {
+            // Convert to array for rendering
+            const allPeers: PeerData[] = Array.from(peersRef.current.values());
+            
+            // Sort by XP to ensure we keep the "best" peers visible if we hit limits
+            allPeers.sort((a, b) => b.xp - a.xp);
+
+            // Limit state update to prevent UI Lag
+            const displayPeers = allPeers.slice(0, MAX_DISPLAY_PEERS);
+
+            for (const data of displayPeers) {
                 newCounts[data.path] = (newCounts[data.path] || 0) + 1;
                 activePeers.push(data);
             }
             
             setActiveCounts(newCounts);
-            
-            // Sort peers by XP desc
-            setPeers(activePeers.sort((a, b) => b.xp - a.xp));
+            setPeers(activePeers);
             
         }, 3000); // Update UI every 3s
 

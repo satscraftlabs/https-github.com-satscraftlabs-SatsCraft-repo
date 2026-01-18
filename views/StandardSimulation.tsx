@@ -133,6 +133,44 @@ export const StandardSimulation: React.FC<StandardSimulationProps> = ({ content,
                     </div>
                 </div>
             );
+        case 'NETWORK_SPLIT':
+            return (
+                <div className="flex items-center justify-center h-48 md:h-64 gap-0 overflow-x-auto px-4 relative">
+                     {/* Trunk */}
+                     <div className="flex gap-2 items-center">
+                        <div className="size-16 border-2 border-white/10 bg-surface-dark rounded-xl flex flex-col items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-lg">grid_view</span>
+                            <span className="font-mono text-[8px] text-text-muted">#799</span>
+                        </div>
+                        <div className="w-8 h-1 bg-white/10"></div>
+                        <div className="size-16 border-2 border-white/10 bg-surface-dark rounded-xl flex flex-col items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-lg">grid_view</span>
+                            <span className="font-mono text-[8px] text-text-muted">#800</span>
+                        </div>
+                     </div>
+                     
+                     {/* Split Point */}
+                     <div className="flex flex-col h-40 justify-between ml-2 relative">
+                        {/* Upper Branch (Legacy) */}
+                        <div className="flex items-center absolute bottom-1/2 left-0 mb-4 origin-bottom-left transform -rotate-12">
+                            <div className="w-12 h-1 bg-white/10"></div>
+                            <div className="size-16 border-2 border-white/10 bg-surface-dark rounded-xl flex flex-col items-center justify-center gap-1 ml-1 opacity-50">
+                                <span className="font-bold text-[10px]">Legacy</span>
+                                <span className="font-mono text-[8px] text-text-muted">#801</span>
+                            </div>
+                        </div>
+
+                        {/* Lower Branch (Fork) */}
+                        <div className="flex items-center absolute top-1/2 left-0 mt-4 origin-top-left transform rotate-12">
+                            <div className="w-12 h-1 bg-primary"></div>
+                            <div className="size-16 border-2 border-primary bg-primary/10 rounded-xl flex flex-col items-center justify-center gap-1 ml-1 shadow-[0_0_15px_rgba(247,147,26,0.3)]">
+                                <span className="font-bold text-[10px] text-primary">Fork</span>
+                                <span className="font-mono text-[8px] text-text-muted">#801</span>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+            );
         default: 
             return (
                 <div className="flex items-center justify-center h-48 md:h-64">

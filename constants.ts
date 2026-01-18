@@ -8,7 +8,7 @@ export const PATHS: Path[] = [
     title: "Bitcoin Sovereign",
     description: "The mandatory starting point. Master self-custody, UTXOs, and the basics of the timechain.",
     icon: "key",
-    activeLearners: "12.4K",
+    activeLearners: "1.2M",
     modules: [
       { id: '1.1', title: 'The Role of Money', description: 'Money as a tool for coordination. Scarcity, opportunity cost, and the social contract.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Beginner', estimatedTime: '15m', xp: 150 },
       { id: '1.2', title: 'Flaws of Fiat', description: 'Evolution from commodity to fiat. Inflation, Cantillon effect, and centralized control.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Beginner', estimatedTime: '15m', xp: 200 },
@@ -28,7 +28,7 @@ export const PATHS: Path[] = [
     title: "Wallet Mastery",
     description: "Operational wallet competence. Avoid loss, master multisig, and recover from disaster.",
     icon: "account_balance_wallet",
-    activeLearners: "8.2K",
+    activeLearners: "850K",
     modules: [
       { id: '2.1', title: 'Wallet Architecture', description: 'HD Wallets, BIP39, and Entropy. Design your fortress.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '20m', xp: 300 },
       { id: '2.2', title: 'Backup & Recovery', description: 'Shamir schemes, inheritance planning, and duress protocols.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '25m', xp: 350 },
@@ -41,7 +41,7 @@ export const PATHS: Path[] = [
     title: "Protocol Engineer",
     description: "Build directly on the timechain. Master consensus rules, scripting, and game theory.",
     icon: "terminal",
-    activeLearners: "1.2K",
+    activeLearners: "125K",
     modules: [
         { id: '3.1', title: 'Consensus & Validation', description: 'Block validity, soft/hard forks, and SPV limits.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Expert', estimatedTime: '35m', xp: 600 },
         { id: '3.2', title: 'UTXO Mechanics', description: 'State transitions, coin creation, and orphan blocks.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Adv.', estimatedTime: '30m', xp: 600 },
@@ -54,7 +54,7 @@ export const PATHS: Path[] = [
     title: "Lightning Operator",
     description: "Manage liquidity and routing. Optimize channels for high-speed throughput.",
     icon: "bolt",
-    activeLearners: "1.8K",
+    activeLearners: "240K",
     modules: [
       { id: '4.1', title: 'Lightning Protocol Basics', description: 'Payment channels, HTLCs, and onion routing fundamentals.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '20m', xp: 300 },
       { id: '4.2', title: 'Node Ops & Config', description: 'Backend choices, fee policies, and critical monitoring.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Adv.', estimatedTime: '25m', xp: 400 },
@@ -67,7 +67,7 @@ export const PATHS: Path[] = [
     title: "Sovereign Merchant",
     description: "Accept Bitcoin without intermediaries. Manage volatility and treasury.",
     icon: "storefront",
-    activeLearners: "3.5K",
+    activeLearners: "420K",
     modules: [
         { id: '5.1', title: 'Merchant Architecture', description: 'BTCPay Server, invoice logic, and privacy preservation.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '25m', xp: 350 },
         { id: '5.2', title: 'Treasury & Volatility', description: 'Hedging strategies, cold storage thresholds, and accounting.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Expert', estimatedTime: '30m', xp: 450 },
@@ -80,7 +80,7 @@ export const PATHS: Path[] = [
     title: "Security Practitioner",
     description: "Audit smart contracts and secure cold storage. Defend against attack vectors.",
     icon: "security",
-    activeLearners: "1.5K",
+    activeLearners: "180K",
     modules: [
       { id: '6.1', title: 'Threat Modeling Basics', description: 'Adversary types, attack surfaces, and risk matrices.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '20m', xp: 350 },
       { id: '6.2', title: 'Key & Device Defense', description: 'Malware mitigation, clipboard protection, and evil maid attacks.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Adv.', estimatedTime: '30m', xp: 500 },
@@ -93,7 +93,7 @@ export const PATHS: Path[] = [
     title: "P2P Market Operator",
     description: "Operate safely in peer-to-peer markets. Reputation, escrow, and dispute resolution.",
     icon: "handshake",
-    activeLearners: "900",
+    activeLearners: "95K",
     modules: [
         { id: '7.1', title: 'P2P Trading Fundamentals', description: 'Trade types, pricing premiums, and verification hygiene.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '20m', xp: 350 },
         { id: '7.2', title: 'Escrow & Dispute Resolution', description: 'Multisig escrow logic, dispute evidence, and bond slashing.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Adv.', estimatedTime: '30m', xp: 500 },
@@ -106,7 +106,7 @@ export const PATHS: Path[] = [
     title: "Community Builder",
     description: "Build resilient Bitcoin circular economies and manage social consensus.",
     icon: "groups",
-    activeLearners: "2.1K",
+    activeLearners: "310K",
     modules: [
         { id: '8.1', title: 'Education System Design', description: 'Curriculum building, active learning, and combating misinformation.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Intermediate', estimatedTime: '25m', xp: 300 },
         { id: '8.2', title: 'Governance & Conflict', description: 'Rough consensus, fork resolution, and treasury management.', type: 'SIMULATION', status: 'AVAILABLE', difficulty: 'Adv.', estimatedTime: '30m', xp: 450 },
@@ -138,15 +138,16 @@ export const RANK_TIERS = [
   { id: 'KEEPER', title: 'Citadel Keeper', minXp: 500000, icon: 'castle', description: 'Guardian of consensus. The highest level of operational sovereignity.' },
 ];
 
+// Updated for 2M+ User Load
 export const MOCK_RANK_DISTRIBUTION: Record<string, number> = {
-  'PLEB': 14205,
-  'SHRIMP': 8430,
-  'CRAB': 4100,
-  'OCTOPUS': 2150,
-  'DOLPHIN': 850,
-  'SHARK': 320,
-  'WHALE': 55,
-  'KEEPER': 3
+  'PLEB': 1420500,
+  'SHRIMP': 843000,
+  'CRAB': 410000,
+  'OCTOPUS': 215000,
+  'DOLPHIN': 85000,
+  'SHARK': 32000,
+  'WHALE': 5500,
+  'KEEPER': 300
 };
 
 export const MOCK_LEADERBOARD = [

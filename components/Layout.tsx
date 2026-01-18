@@ -54,6 +54,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
         <div className="flex flex-col gap-4 w-full px-2">
            <NavItem icon="dashboard" label="HOME" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
            <NavItem icon="school" label="LABS" view={View.LABS} onClick={() => onNavigate(View.LABS)} /> 
+           <NavItem icon="menu_book" label="LIBRARY" view={View.RESOURCES} onClick={() => onNavigate(View.RESOURCES)} />
            <NavItem icon="emoji_events" label="RANK" view={View.RANK} onClick={() => onNavigate(View.RANK)} />
            <NavItem icon="settings" label="PROFILE" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
         </div>
@@ -74,6 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
           <div className="flex justify-around items-center h-16 px-2">
              <NavItem icon="dashboard" label="Home" view={View.DASHBOARD} onClick={() => onNavigate(View.DASHBOARD)} />
              <NavItem icon="school" label="Labs" view={View.LABS} onClick={() => onNavigate(View.LABS)} />
+             <NavItem icon="menu_book" label="Library" view={View.RESOURCES} onClick={() => onNavigate(View.RESOURCES)} />
              <NavItem icon="emoji_events" label="Rank" view={View.RANK} onClick={() => onNavigate(View.RANK)} />
              <NavItem icon="settings" label="Profile" view={View.PROFILE} onClick={() => onNavigate(View.PROFILE)} />
           </div>

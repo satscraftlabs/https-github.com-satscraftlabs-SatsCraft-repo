@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { UserState } from '../types';
 import { AuditReportModal } from '../components/AuditReportModal';
@@ -9,10 +9,35 @@ interface ProfileProps {
   onLogout: () => void;
   devMode: boolean;
   setDevMode: (enabled: boolean) => void;
+  appVersion?: string;
+  onUpgrade?: () => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ user, onLogout, devMode, setDevMode }) => {
+export const Profile: React.FC<ProfileProps> = ({ user, onLogout, devMode, setDevMode, appVersion = "v0.9.0", onUpgrade }) => {
   const [showAuditModal, setShowAuditModal] = React.useState(false);
+  const [isCheckingUpgrade, setIsCheckingUpgrade] = useState(false);
+  const [upgradeAvailable, setUpgradeAvailable] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const handleCheckUpgrade = () => {
+      setIsCheckingUpgrade(true);
+      // Simulate network fetch
+      setTimeout(() => {
+          setIsCheckingUpgrade(false);
+          if (appVersion.includes('SegWit')) {
+              setUpgradeAvailable(true);
+          }
+      }, 1500);
+  };
+
+  const handlePerformUpgrade = () => {
+      setIsUpgrading(true);
+      setTimeout(() => {
+          setIsUpgrading(false);
+          setUpgradeAvailable(false);
+          if (onUpgrade) onUpgrade();
+      }, 2000);
+  };
 
   // Generate Deterministic Activity Data based on User State
   const activityData = useMemo(() => {
@@ -214,6 +239,60 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout, devMode, setDe
             </div>
         </div>
         
+        {/* Node Consensus / Upgrades */}
+        <div className="bg-surface-dark rounded-2xl border border-white/5 overflow-hidden">
+             <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-orange-400">cloud_download</span>
+                    Consensus Rules
+                </h2>
+                <div className="text-[10px] font-mono text-text-muted bg-white/5 px-2 py-1 rounded">
+                    {appVersion}
+                </div>
+            </div>
+            <div className="p-6">
+                {!upgradeAvailable ? (
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-text-muted">Current Protocol Version</p>
+                            <p className="text-white font-bold">{appVersion}</p>
+                        </div>
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={handleCheckUpgrade} 
+                            disabled={isCheckingUpgrade}
+                            icon={isCheckingUpgrade ? 'sync' : 'refresh'}
+                            className={isCheckingUpgrade ? 'animate-pulse' : ''}
+                        >
+                            {isCheckingUpgrade ? 'Checking...' : 'Check for Updates'}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="bg-background-dark border border-success/30 rounded-xl p-4 animate-in slide-in-from-bottom-2">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="size-10 rounded-full bg-success/20 flex items-center justify-center text-success shrink-0">
+                                <span className="material-symbols-outlined">upgrade</span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold">Taproot Activation Ready</h3>
+                                <p className="text-xs text-text-muted mt-1">Upgrade v1.0.0 enables Schnorr Signatures and advanced scripting capabilities.</p>
+                            </div>
+                        </div>
+                        <Button 
+                            variant="primary" 
+                            fullWidth 
+                            onClick={handlePerformUpgrade} 
+                            disabled={isUpgrading}
+                            className="bg-success hover:bg-green-600 text-white"
+                        >
+                            {isUpgrading ? 'Downloading Consensus Data...' : 'Signal & Upgrade Node'}
+                        </Button>
+                    </div>
+                )}
+            </div>
+        </div>
+
         {/* App Settings */}
         <div className="bg-surface-dark rounded-2xl border border-white/5 overflow-hidden">
              <div className="p-6 border-b border-white/5">
@@ -251,7 +330,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout, devMode, setDe
         </div>
 
         <div className="text-center">
-             <p className="text-[10px] text-text-muted font-mono">SatsCraft Protocol v0.9.3 (Beta)</p>
+             <p className="text-[10px] text-text-muted font-mono">SatsCraft Protocol {appVersion}</p>
              <p className="text-[10px] text-text-muted font-mono mt-1">Nostr Relay Connection: wss://relay.damus.io [CONNECTED]</p>
         </div>
 

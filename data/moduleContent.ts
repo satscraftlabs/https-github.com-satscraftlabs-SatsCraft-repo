@@ -1,4 +1,5 @@
 
+
 import { ModuleContent } from '../types';
 
 export const MODULE_CONTENT: Record<string, ModuleContent> = {
@@ -329,6 +330,28 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
             { id: 'o1', label: 'Soft Fork', isCorrect: true, feedback: 'Correct. It avoids splitting the community and currency.' },
             { id: 'o2', label: 'Hard Fork', isCorrect: false, feedback: 'Incorrect. Hard forks force users to choose sides.' }
         ]
+      },
+      {
+        id: 's2',
+        title: 'Scenario: The Block Size War',
+        explanation: 'A group of miners wants to increase the block size from 1MB to 8MB (Hard Fork). Your node enforces the 1MB rule.\n\nThe miners produce an 8MB block. What does your node do?',
+        question: 'How does your 1MB-rule node react to an 8MB block?',
+        visualType: 'BLOCKCHAIN',
+        options: [
+            { id: 'o1', label: 'Accept it', isCorrect: false, feedback: 'Your node checks the size, sees 8MB > 1MB, and must reject it.' },
+            { id: 'o2', label: 'Reject & Ban', isCorrect: true, feedback: 'Correct. To your node, the block is invalid. It bans the peer that sent it.' }
+        ]
+      },
+      {
+        id: 's3',
+        title: 'Chain Split Consequences',
+        explanation: 'Because 60% of miners switched to 8MB, and 40% stayed on 1MB, the blockchain has split into two separate paths sharing the same history up to block #800.\n\nWithout "Replay Protection", a transaction signed on one chain is valid on the other.',
+        question: 'You send 1 BTC to Bob on the Fork chain. What might happen on the Legacy chain?',
+        visualType: 'NETWORK_SPLIT',
+        options: [
+            { id: 'o1', label: 'Nothing', isCorrect: false, feedback: 'Since you use the same Private Key on both chains, the signature is valid on both.' },
+            { id: 'o2', label: 'Accidental Spend', isCorrect: true, feedback: 'Correct. This is a "Replay Attack". You intended to spend Fork-Coin, but also spent your Legacy-Coin.' }
+        ]
       }
     ]
   },
@@ -479,7 +502,7 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
         question: 'Can a hacker access an air-gapped device?',
         visualType: 'CARDS',
         options: [
-            { id: 'o1', label: 'Yes, via WiFi', isCorrect: false, feedback: 'There is no WiFi.' },
+            { id: 'o1', label: 'Yes', isCorrect: false, feedback: 'There is no WiFi.' },
             { id: 'o2', label: 'Only with physical access', isCorrect: true, feedback: 'Correct. Or via "Evil Maid" attacks (tampering with hardware).' }
         ]
       }
@@ -744,4 +767,25 @@ export const MODULE_CONTENT: Record<string, ModuleContent> = {
       }
     ]
   }
+};
+
+// --- SIMULATED REMOTE CONTENT PATCH ---
+// In a real app, this would be fetched from IPFS or a Nostr Relay
+export const TAPROOT_UPGRADE_PATCH: Partial<Record<string, ModuleContent>> = {
+    '3.3': {
+        id: '3.3',
+        steps: [
+            {
+                id: 's1',
+                title: 'Script Upgrade: Taproot',
+                explanation: 'We have upgraded to Taproot (Schnorr Signatures). This makes multi-sig transactions look identical to single-sig on chain.\n\nLegacy ECDSA signatures were large and distinct. Schnorr allows key aggregation.',
+                question: 'What is the privacy benefit of Key Aggregation?',
+                visualType: 'CARDS',
+                options: [
+                    { id: 'o1', label: 'Indistinguishable Tx', isCorrect: true, feedback: 'Correct. A multisig spend looks exactly like a single person spending.' },
+                    { id: 'o2', label: 'Faster block time', isCorrect: false, feedback: 'Block time is fixed at 10 minutes.' }
+                ]
+            }
+        ]
+    }
 };
