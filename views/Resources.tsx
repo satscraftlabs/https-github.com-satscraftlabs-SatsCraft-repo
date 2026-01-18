@@ -114,6 +114,7 @@ const BOOKS: Book[] = [
 
 export const Resources: React.FC = () => {
   const [filter, setFilter] = useState<string>('All');
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const categories = ['All', 'Technical', 'Economics', 'History', 'Privacy'];
   
@@ -127,6 +128,14 @@ export const Resources: React.FC = () => {
       const totalAuthors = new Set(BOOKS.map(b => b.author)).size;
       return { technicalCount, econCount, totalAuthors };
   }, []);
+
+  const handleImageError = (id: string) => {
+      setFailedImages(prev => {
+          const newSet = new Set(prev);
+          newSet.add(id);
+          return newSet;
+      });
+  };
 
   // Pick a random featured book or a specific one
   const featuredBook = BOOKS.find(b => b.id === '2'); // Mastering Bitcoin
@@ -247,68 +256,89 @@ export const Resources: React.FC = () => {
 
       {/* Books Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-10">
-        {filteredBooks.map((book) => (
-            <div 
-                key={book.id} 
-                className="group bg-surface-dark border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 hover:shadow-2xl transition-all duration-300 flex flex-col h-full"
-            >
-                {/* Visual Cover */}
-                <div className="relative h-48 overflow-hidden bg-black/20 group">
-                    {/* Blured Background */}
-                    <div 
-                        className="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-110 transition-transform duration-700 group-hover:scale-125"
-                        style={{ backgroundImage: `url(${book.coverUrl})` }}
-                    />
-                    
-                    {/* Category Badge */}
-                    <div className="absolute top-3 right-3 z-20">
-                        <div className="inline-block bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 shadow-lg">
-                            {book.category}
+        {filteredBooks.map((book) => {
+            const hasError = failedImages.has(book.id);
+            return (
+                <div 
+                    key={book.id} 
+                    className="group bg-surface-dark border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 hover:shadow-2xl transition-all duration-300 flex flex-col h-full"
+                >
+                    {/* Visual Cover or Fallback */}
+                    {hasError ? (
+                        <div className={`h-48 bg-gradient-to-br ${book.color} relative overflow-hidden p-6`}>
+                            <div className="absolute right-0 bottom-0 opacity-20 transform translate-x-4 translate-y-4 group-hover:scale-110 transition-transform duration-500">
+                                <span className="material-symbols-outlined text-9xl text-white">{book.icon}</span>
+                            </div>
+                            <div className="relative z-10">
+                                <div className="inline-block bg-black/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded mb-2 uppercase tracking-wider border border-white/10 shadow-lg">
+                                    {book.category}
+                                </div>
+                                <h3 className="text-xl font-bold text-white font-display leading-tight drop-shadow-md">
+                                    {book.title}
+                                </h3>
+                                <p className="text-white/80 text-xs font-medium mt-1">{book.author}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="relative h-48 overflow-hidden bg-black/20 group">
+                            {/* Blured Background */}
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-110 transition-transform duration-700 group-hover:scale-125"
+                                style={{ backgroundImage: `url(${book.coverUrl})` }}
+                            />
+                            
+                            {/* Category Badge */}
+                            <div className="absolute top-3 right-3 z-20">
+                                <div className="inline-block bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 shadow-lg">
+                                    {book.category}
+                                </div>
+                            </div>
+
+                            {/* Actual Cover */}
+                            <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                                <img 
+                                    src={book.coverUrl} 
+                                    alt={book.title} 
+                                    onError={() => handleImageError(book.id)}
+                                    className="h-full w-auto object-contain rounded shadow-[0_10px_20px_rgba(0,0,0,0.5)] transform transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-2"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-6 flex-1 flex flex-col">
+                        <h3 className="text-lg font-bold text-white font-display leading-tight mb-1 group-hover:text-primary transition-colors">
+                            {book.title}
+                        </h3>
+                        <p className="text-white/60 text-xs font-medium mb-3">{book.author}</p>
+                        
+                        <p className="text-text-muted text-sm leading-relaxed mb-6 flex-1 line-clamp-3">
+                            {book.description}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
+                                book.difficulty === 'Beginner' ? 'bg-success/10 text-success border-success/20' :
+                                book.difficulty === 'Intermediate' ? 'bg-warning/10 text-warning border-warning/20' :
+                                'bg-error/10 text-error border-error/20'
+                            }`}>
+                                {book.difficulty}
+                            </span>
+                            
+                            <a 
+                                href={book.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="flex items-center gap-2 text-xs font-bold text-white hover:text-primary transition-colors group-hover:underline"
+                            >
+                                Locate
+                                <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">open_in_new</span>
+                            </a>
                         </div>
                     </div>
-
-                    {/* Actual Cover */}
-                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
-                        <img 
-                            src={book.coverUrl} 
-                            alt={book.title} 
-                            className="h-full w-auto object-contain rounded shadow-[0_10px_20px_rgba(0,0,0,0.5)] transform transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-2"
-                        />
-                    </div>
                 </div>
-
-                <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="text-lg font-bold text-white font-display leading-tight mb-1 group-hover:text-primary transition-colors">
-                        {book.title}
-                    </h3>
-                    <p className="text-white/60 text-xs font-medium mb-3">{book.author}</p>
-                    
-                    <p className="text-text-muted text-sm leading-relaxed mb-6 flex-1 line-clamp-3">
-                        {book.description}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
-                            book.difficulty === 'Beginner' ? 'bg-success/10 text-success border-success/20' :
-                            book.difficulty === 'Intermediate' ? 'bg-warning/10 text-warning border-warning/20' :
-                            'bg-error/10 text-error border-error/20'
-                        }`}>
-                            {book.difficulty}
-                        </span>
-                        
-                        <a 
-                            href={book.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-center gap-2 text-xs font-bold text-white hover:text-primary transition-colors group-hover:underline"
-                        >
-                            Locate
-                            <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">open_in_new</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        ))}
+            );
+        })}
       </div>
 
       <div className="mt-auto border-t border-white/5 pt-8 text-center text-text-muted text-xs">
